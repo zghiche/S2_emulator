@@ -32,7 +32,7 @@ void HGCalHistoClusteringImplSA::runAlgorithm()
   HGCalLinkTriggerCellSAPtrCollection LinksInData;
   for ( unsigned int i = 0; i < 54432; ++ i ) {
     LinksInData.emplace_back(make_unique<HGCalLinkTriggerCell>() );
-    if ( i == 264 ) LinksInData.back()->data_ = 99;
+    if ( i == 264 ) LinksInData.back()->data_ = 39;
   }
 
   HGCalTriggerCellSAPtrCollection unpackedTCs;

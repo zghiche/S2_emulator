@@ -56,7 +56,11 @@ ClusterAlgoConfig::ClusterAlgoConfig() :
   layerWeights_E_H_early_{ (unsigned)(-1) , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 1 , 1 , 1 , 1 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 },
   correction_( 131071 ), // 0b011111111111111111
   saturation_( (2<<19) - 1 )
-{}
+{
+  initializeSmearingKernelConstants( cRows_, rOverZHistOffset_, rOverZBinSize_ );
+  initializeThresholdMaximaConstants( cRows_, thresholdMaximaParam_a_, thresholdMaximaParam_b_, thresholdMaximaParam_c_  );
+  initializeCosLUT();
+}
 
 ClusterAlgoConfig::ClusterAlgoConfig(unsigned int cClocks, unsigned int cInputs, unsigned int cInputs2, unsigned int cInt, unsigned int cColumns, unsigned int cRows,
                                      unsigned int rOverZHistOffset, unsigned int rOverZBinSize, const std::vector<unsigned int>& kernelWidths,
@@ -90,28 +94,6 @@ ClusterAlgoConfig::ClusterAlgoConfig(unsigned int cClocks, unsigned int cInputs,
   cosLUT_(cosLUT),
   clusterizerMagicTime_(clusterizerMagicTime),
   stepLatency_(stepLatency),
-  // stepLatency_({
-  //   { UnpackLinks , 3 },        
-  //   { TriggerCellDistribution , 2 },
-  //   { UnpackTriggerCells , 4 },
-  //   { TcToHc , 2 },
-  //   { Hist   , 231 },
-  //   { Smearing1D , 6 },
-  //   { Interleaving , 1 },
-  //   { NormArea   , 3 },
-  //   { Smearing2D , 5 },
-  //   { Deinterleaved , 4 },    
-  //   { Maxima1D   , 5 },
-  //   { Interleaving2 , 0 },  // Unused
-  //   { Maxima2D   , 6 },
-  //   { ThresholdMaxima , 3 },  // Unused?
-  //   { CalcAverage , 4 },
-  //   { Deinterleaving2, 0 }, // Unused
-  //   { MaximaFanout , 9 },
-  //   { Clusterizer , 0 },
-  //   { TriggerCellToCluster , 8 }
-  //   // { ClusterSum , 0 }
-  // }),
   depths_(depths),
   triggerLayers_(triggerLayers),
   layerWeights_E_(layerWeights_E),
@@ -120,7 +102,11 @@ ClusterAlgoConfig::ClusterAlgoConfig(unsigned int cClocks, unsigned int cInputs,
   layerWeights_E_H_early_(layerWeights_E_H_early),
   correction_(correction),
   saturation_(saturation)
-{}
+{
+  initializeSmearingKernelConstants( cRows_, rOverZHistOffset_, rOverZBinSize_ );
+  initializeThresholdMaximaConstants( cRows_, thresholdMaximaParam_a_, thresholdMaximaParam_b_, thresholdMaximaParam_c_  );
+  initializeCosLUT();
+}
 
 
 void ClusterAlgoConfig::setStepLatencies( const std::vector<unsigned int> latencies ) {

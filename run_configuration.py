@@ -31,4 +31,4 @@ if __name__ == '__main__':
     print('calling the algorithm')
     HGCalHistoClusteringImplSA = cppyy.gbl.l1thgcfirmware.HGCalHistoClusteringImplSA
     theAlgo = HGCalHistoClusteringImplSA(config)
-    #theAlgo.runAlgorithm()
+    theAlgo.runAlgorithm()

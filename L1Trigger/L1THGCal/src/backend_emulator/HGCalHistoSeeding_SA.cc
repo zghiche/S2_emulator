@@ -13,7 +13,7 @@ void HGCalHistoSeeding::runSeeding(const HGCalTriggerCellSAPtrCollection& trigge
   HGCalHistogramCellSAPtrCollection histoCells;
 
   triggerCellToHistogramCell(triggerCellsIn, histoCells);
-
+  
   makeHistogram(histoCells, histogramOut);
 
   // Smearing
