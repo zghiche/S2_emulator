@@ -21,6 +21,7 @@ public:
   virtual ~HGCalHistoClusteringImplSA(){};
 
   virtual void runAlgorithm( );
+  virtual void runAlgorithm(HGCalLinkTriggerCellSAPtrCollection& LinksInData);
 
 protected:
   const ClusterAlgoConfig& config_;
