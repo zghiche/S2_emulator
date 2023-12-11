@@ -59,7 +59,7 @@ HGCalTriggerCellSAPtrCollection HGCalLinkUnpacking::triggerCellDistribution( con
         int Phi      = ( lut_out >> 12 ) & 0xFFF;
         int Layer    = ( lut_out >> 24 ) & 0x3F;
         int index    = ( lut_out >> 30 ) & 0x1FF;
-       
+      
         auto& in = TriggerCellsIn.at( ( Nchannels * frame ) + index );       
         TriggerCellsOut.emplace_back(
           make_unique< HGCalTriggerCell >( 

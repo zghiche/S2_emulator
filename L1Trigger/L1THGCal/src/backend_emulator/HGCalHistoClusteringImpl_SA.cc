@@ -31,27 +31,27 @@ void HGCalHistoClusteringImplSA::runAlgorithm(HGCalLinkTriggerCellSAPtrCollectio
   HGCalTriggerCellSAPtrCollection unpackedTCs;
   linkUnpacking_.runLinkUnpacking( LinksInData, unpackedTCs);
 
-  // For ( const auto& tc : unpackedTCs) {
-  //   if (tc->energy() > 0 ) {
-  //     std::cout << "TC : " << tc->energy() << std::endl;
-  //   }
-  // }
+  for ( const auto& tc : unpackedTCs) {
+    if (tc->energy() > 0 ) {
+      std::cout << "TC : " << tc->energy() << std::endl;
+    }
+  }
 
   HGCalHistogramCellSAPtrCollection histogram;
   seeding_.runSeeding(unpackedTCs, histogram);
 
-  // for ( const auto& bin : histogram ) {
-  //   if ( bin->S() > 0 )
-  //     std::cout << "Histo bin : " << bin->S() << std::endl;
-  // }
+  for ( const auto& bin : histogram ) {
+    if ( bin->S() > 0 )
+      std::cout << "Histo bin : " << bin->S() << std::endl;
+  }
 
   HGCalClusterSAPtrCollection clusters;
   clustering_.runClustering(unpackedTCs, histogram, clusters);
 
-  // for ( const auto& cluster : clusters ) {
-  //   if ( cluster->n_tc().value_ > 0 )
-  //     std::cout << "Cluster : " << cluster->n_tc() << std::endl;
-  // }
+  for ( const auto& cluster : clusters ) {
+    if ( cluster->n_tc().value_ > 0 )
+      std::cout << "Cluster : " << cluster->n_tc() << std::endl;
+  }
  
   // Cluster properties  
   // clusterProperties( clusters );
