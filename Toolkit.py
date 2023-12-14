@@ -1,12 +1,9 @@
-import yaml
 import cppyy
-
-with open('config.yaml', "r") as afile:
-    params = yaml.safe_load(afile)
+from cppyy.gbl import std
 
 def define_map(params):
     enum = cppyy.gbl.l1thgcfirmware.Step
-    map_custom = cppyy.gbl.std.map[enum, "unsigned int"]()
+    map_custom = std.map[enum, "unsigned int"]()
 
     for d in params['stepLatency']:
       for latency in d.keys():

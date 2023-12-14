@@ -52,14 +52,14 @@ HGCalTriggerCellSAPtrCollection HGCalLinkUnpacking::triggerCellDistribution( con
     for ( unsigned int iColumn = 0; iColumn != config_.cColumns(); ++iColumn ) {
       auto& lut_out = config_.TriggerCellDistributionLUT( ( Nframes*iColumn ) + frame );
       int valid = ( lut_out >> 39 ) & 0x1;
-      
+
       if( valid )
       {   
         int R_over_Z = ( lut_out >> 0 )  & 0xFFF;
         int Phi      = ( lut_out >> 12 ) & 0xFFF;
         int Layer    = ( lut_out >> 24 ) & 0x3F;
         int index    = ( lut_out >> 30 ) & 0x1FF;
-      
+ 
         auto& in = TriggerCellsIn.at( ( Nchannels * frame ) + index );       
         TriggerCellsOut.emplace_back(
           make_unique< HGCalTriggerCell >( 
