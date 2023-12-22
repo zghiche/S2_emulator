@@ -10,4 +10,4 @@ For the moment, there is no `Makefile` to compile the code. The command that sho
 g++ -std=c++14 -shared -o lib_configuration.so L1Trigger/L1THGCal/src/backend_emulator/*.cc -fPIC -I.
 ```
 
-In the main python file `run_configuration.py` dummy data are prepared and injected. Currently I'm studying the back-end mapping (TC to S1, S2 links and frames) to understand how the data has to be prepared starting from a simple simulated dataset.
+In the main python file `run_configuration.py` dummy data are prepared and injected. Currently I'm studying the back-end mapping (TC to S1, S2 links and frames) to understand how the data has to be prepared starting from a simple simulated dataset. XML files [here](https://gitlab.cern.ch/hgcal-tpg/mapping/-/tree/master).
