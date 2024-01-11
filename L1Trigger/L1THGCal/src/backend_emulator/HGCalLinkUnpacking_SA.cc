@@ -53,6 +53,7 @@ HGCalTriggerCellSAPtrCollection HGCalLinkUnpacking::triggerCellDistribution( con
       auto& lut_out = config_.TriggerCellDistributionLUT( ( Nframes*iColumn ) + frame );
       int valid = ( lut_out >> 39 ) & 0x1;
 
+      // std::cout << lut_out << std::endl;
       if( valid )
       {   
         int R_over_Z = ( lut_out >> 0 )  & 0xFFF;
@@ -60,6 +61,7 @@ HGCalTriggerCellSAPtrCollection HGCalLinkUnpacking::triggerCellDistribution( con
         int Layer    = ( lut_out >> 24 ) & 0x3F;
         int index    = ( lut_out >> 30 ) & 0x1FF;
  
+        // std::cout << R_over_Z << std::endl;
         auto& in = TriggerCellsIn.at( ( Nchannels * frame ) + index );       
         TriggerCellsOut.emplace_back(
           make_unique< HGCalTriggerCell >( 
