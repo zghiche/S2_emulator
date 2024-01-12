@@ -101,15 +101,35 @@ def reading_input_file():
     'good_tc_cluster_id']
 
     tree  = uproot.open(filepath)[name_tree]
-    return tree.arrays(branches, entry_start=19, entry_stop=20, library='ak')
+    return tree.arrays(branches, entry_start=1, entry_stop=2, library='ak')
 
 def get_module_hash(conversion, plane, u, v):
     filtered_rows = conversion[(conversion[:, 0] == plane) & 
                                (conversion[:, 1] == u) &
                                (conversion[:, 2] == v)]
-    return filtered_rows[:, 3]
+    return int(filtered_rows[0][3])
+
+def get_frame_channel(xml_data, module, column):
+    return xml_data[str(module)][str(column)]
+
+def transform_number(number):
+    # Ensure the number is non-negative
+    if number < 0:
+        raise ValueError("Input number must be non-negative")
+
+    # Extract integer1 and integer2
+    integer1 = number & 0b111  # 3 bits
+    integer2 = (number >> 3) & 0b1111  # 4 bits
+
+    # Build the transformed form
+    print(f"{integer1} * 2^{integer2}")
+
 
 def process_event():
+    transform_number(320)
+    exit()
+
+    Nchannels = 84 * 3
     xml_data = get_channel_frame()
     module_conversion = prepare_geometry_txt()
 
@@ -117,27 +137,17 @@ def process_event():
     for event in ds.event:
         print('Processing event', event)
         ds_event = ds[ds.event == event]
+        data_input = {}
         for tc_idx in range(len(ds_event.good_tc_x[0])):
             module = get_module_hash(module_conversion,
                                      ds_event.good_tc_layer[0][tc_idx],
                                      ds_event.good_tc_waferu[0][tc_idx],
                                      ds_event.good_tc_waferv[0][tc_idx])
-            column = int((3*ds_event.good_tc_phi[0][tc_idx]*84)/(2*3.14))
-            print(module, column)
-            exit()
-            print(xml_data[module][column])
-
-    # mif_data = process_file('S2.CombinedTD.Balanced60.MixedTypes.NoSplit.mif')
-    # 
-    # print(mif_data)
-    # ds = reading_input_file()
-    # for event in ds.event:
-    #     print('Processing event', event)
-    #     R_over_Z = r_over_z(ds[ds.event == event]).astype(int)
-    #     Phi      = np.array(ds[ds.event == event]['good_tc_phi'])[0].astype(int)
-    #     Plane    = np.array(ds[ds.event == event]['good_tc_layer'])[0]
-    #     energy   = np.array(ds[ds.event == event]['good_tc_energy'])[0]
-
-    #     event = np.stack((R_over_Z, Phi, Plane, energy), axis=-1)    
-    #     # LiksInData = merge_arrays(event, mif_data)
-
+            column = int((3*(ds_event.good_tc_phi[0][tc_idx]-1.04)*84)/(2*3.14))
+            data = get_frame_channel(xml_data, module, column)
+            if not data: continue
+            
+            frame, channel = int(data[0]['frame_id']), int(data[0]['channel_id'])
+            data_input[Nchannles*frame+channel] = ds_event.good_tc_energy[0][tc_idx]
+        break
+    return data_input

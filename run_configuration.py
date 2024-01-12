@@ -44,7 +44,7 @@ def run_algorithm(config):
 
 
 if __name__ == '__main__':
-    tool.process_event()
+    data_input = tool.process_event()
     exit()
 
     tool.define_map(params)
