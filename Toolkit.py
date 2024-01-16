@@ -112,21 +112,14 @@ def get_module_hash(conversion, plane, u, v):
 def get_frame_channel(xml_data, module, column):
     return xml_data[str(module)][str(column)]
 
-def transform_number(number):
-    # Ensure the number is non-negative
-    if number < 0:
-        raise ValueError("Input number must be non-negative")
+import struct
 
-    # Extract integer1 and integer2
-    integer1 = number & 0b111  # 3 bits
-    integer2 = (number >> 3) & 0b1111  # 4 bits
-
-    # Build the transformed form
-    print(f"{integer1} * 2^{integer2}")
-
+def floatToBinary32(value):
+    return ''.join(f'{c:0>8b}' for c in struct.pack('!f', value))
 
 def process_event():
-    transform_number(320)
+    bin_str = floatToBinary32(20)
+    print(bin_str[1:5], bin_str[9:12])
     exit()
 
     Nchannels = 84 * 3
