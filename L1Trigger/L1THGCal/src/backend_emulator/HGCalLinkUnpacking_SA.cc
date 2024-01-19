@@ -91,7 +91,11 @@ void HGCalLinkUnpacking::unpackTriggerCells( const HGCalTriggerCellSAPtrCollecti
 
   for ( auto& tc : triggerCells ) {
     uint32_t Energy = ( tc->energy() >> 4 ) & 0x7;
-    uint32_t Exponent = tc->energy() & 0xF;   
+    uint32_t Exponent = tc->energy() & 0xF;
+    // if (tc->energy() !=0) {
+    //    std::cout << tc->energy() << std::endl;
+    //    std::cout << Energy << Exponent << std::endl; 
+    // }
     tc->setEnergy( Energy << Exponent );
     tc->addLatency( stepLatency );
   }

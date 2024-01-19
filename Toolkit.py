@@ -112,16 +112,35 @@ def get_module_hash(conversion, plane, u, v):
 def get_frame_channel(xml_data, module, column):
     return xml_data[str(module)][str(column)]
 
-import struct
+def compress_value(value, exponent_bits=4, mantissa_bits=3, truncation_bits=0):
+    saturation_code = (1 << (exponent_bits + mantissa_bits)) - 1
+    saturation_value = ((1 << (mantissa_bits + truncation_bits + 1)) - 1) << ((1 << exponent_bits) - 2)
 
-def floatToBinary32(value):
-    return ''.join(f'{c:0>8b}' for c in struct.pack('!f', value))
+    if value > saturation_value:
+        return saturation_code
+
+    bitlen = 0
+    shifted_value = value >> truncation_bits
+    valcopy = shifted_value
+    while valcopy != 0:
+        valcopy >>= 1
+        bitlen += 1
+
+    if bitlen <= mantissa_bits:
+        compressed_code = shifted_value
+        compressed_value = shifted_value << truncation_bits
+        return compressed_code
+
+    # Build exponent and mantissa
+    exponent = bitlen - mantissa_bits
+    mantissa = (shifted_value >> (exponent - 1)) & ~(1 << mantissa_bits)
+
+    # Assemble floating-point
+    compressed_value = ((1 << mantissa_bits) | mantissa) << (exponent - 1)
+    compressed_code = (mantissa << exponent_bits) | exponent #(exponent << mantissa_bits) | mantissa
+    return compressed_code
 
 def process_event():
-    bin_str = floatToBinary32(20)
-    print(bin_str[1:5], bin_str[9:12])
-    exit()
-
     Nchannels = 84 * 3
     xml_data = get_channel_frame()
     module_conversion = prepare_geometry_txt()
@@ -141,6 +160,6 @@ def process_event():
             if not data: continue
             
             frame, channel = int(data[0]['frame_id']), int(data[0]['channel_id'])
-            data_input[Nchannles*frame+channel] = ds_event.good_tc_energy[0][tc_idx]
+            data_input[Nchannels*frame+channel] = compress_value(int(10*ds_event.good_tc_energy[0][tc_idx]))
         break
     return data_input

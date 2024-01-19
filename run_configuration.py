@@ -18,11 +18,13 @@ def get_input_data():
     LinksInData = std.vector['std::unique_ptr<l1thgcfirmware::HGCalLinkTriggerCell>']()
     HGCalLinkTriggerCell = l1thgcfirmware.HGCalLinkTriggerCell
     
+    data_input = tool.process_event()
+    # print(data_input)
     for i in range(54432):
         LinksInData.push_back(std.make_unique[HGCalLinkTriggerCell]())
-        if i == 264:  
-            LinksInData[-1].data_ = 99
-            print(LinksInData[-1].data_)
+        if i in data_input.keys():
+            LinksInData[-1].data_ = data_input[i]
+            # print(LinksInData[-1].data_)
     
     return LinksInData
 
@@ -44,12 +46,8 @@ def run_algorithm(config):
 
 
 if __name__ == '__main__':
-    data_input = tool.process_event()
-    print(data_input)
-    exit()
-
     tool.define_map(params)
     config = l1thgcfirmware.ClusterAlgoConfig(**params)
-    config.printConfiguration()
+    # config.printConfiguration()
 
     run_algorithm(config)

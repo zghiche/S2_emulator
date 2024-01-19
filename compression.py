@@ -5,8 +5,8 @@ def parse_args():
     parser.add_argument("number", type=int, help="Enter a numeric value")
     return parser.parse_args()
 
-def compress_value(value, exponent_bits=4, mantissa_bits=3, truncation_bits=0):
-
+def compress_value(value, exponent_bits=4, mantissa_bits=3, truncation_bits=0, lsb=1):
+    value = value/lsb
     saturation_code = (1 << (exponent_bits + mantissa_bits)) - 1
     saturation_value = ((1 << (mantissa_bits + truncation_bits + 1)) - 1) << ((1 << exponent_bits) - 2)
 
@@ -30,9 +30,8 @@ def compress_value(value, exponent_bits=4, mantissa_bits=3, truncation_bits=0):
     mantissa = (shifted_value >> (exponent - 1)) & ~(1 << mantissa_bits)
 
     print(bin(exponent), bin(mantissa))
-    # Assemble floating-point
-    compressed_value = ((1 << mantissa_bits) | mantissa) << (exponent - 1); #(exponent << mantissa_bits) | mantissa
-    #compressed_value = floatval << truncation_bits
+    print(mantissa<<exponent)
+    compressed_value = ((1 << mantissa_bits) | mantissa) << (exponent - 1); 
     return compressed_value
 
 if __name__ == "__main__":
