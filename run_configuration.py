@@ -19,12 +19,10 @@ def get_input_data():
     HGCalLinkTriggerCell = l1thgcfirmware.HGCalLinkTriggerCell
     
     data_input = tool.process_event()
-    # print(data_input)
     for i in range(54432):
         LinksInData.push_back(std.make_unique[HGCalLinkTriggerCell]())
         if i in data_input.keys():
             LinksInData[-1].data_ = data_input[i]
-            # print(LinksInData[-1].data_)
     
     return LinksInData
 
@@ -37,6 +35,10 @@ def run_algorithm(config):
 
     unpackedTCs = l1thgcfirmware.HGCalTriggerCellSAPtrCollection()
     linkUnpacking_.runLinkUnpacking(get_input_data(), unpackedTCs);
+
+    for tc in unpackedTCs:
+      if tc.energy() > 0:
+        print("TC : ", tc.energy())
 
     histogram = l1thgcfirmware.HGCalHistogramCellSAPtrCollection()
     seeding_.runSeeding(unpackedTCs, histogram)

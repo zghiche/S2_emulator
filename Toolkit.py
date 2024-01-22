@@ -3,6 +3,7 @@ from cppyy.gbl import std
 import numpy as np
 import awkward as ak
 import uproot
+import math
 import xml.etree.ElementTree as ET
 from xml.dom import minidom
 from collections import defaultdict
@@ -22,7 +23,8 @@ def get_channel_frame():
                     frame_id = frame_element.get('id')
                     column = frame_element.get('column')
                     module = frame_element.get('Module')
-                    reversed_data[module][column].append({'frame_id': frame_id, 'channel_id': channel_id, 's1_id': s1_id})
+                    glob_channel = 12*int(s1_id[1:])+int(channel_id)
+                    reversed_data[module][column].append({'frame_id': frame_id, 'channel_id': channel_id, 'glob_channel': glob_channel, 's1_id': s1_id})
 
     return reversed_data
 
@@ -35,46 +37,6 @@ def define_map(params):
         map_custom[int(vars(enum)[latency])] = d[latency]
 
     params['stepLatency'] = map_custom
-
-def unpack_values(lut_out):
-    R_over_Z = (lut_out >> 0) & 0xFFF
-    Phi = (lut_out >> 12) & 0xFFF
-    Layer = (lut_out >> 24) & 0x3F
-    index = (lut_out >> 30) & 0x1FF
-    return R_over_Z, Phi, Layer, index
-
-def process_file(file_path):
-    with open(file_path, 'r') as file:
-        lines = file.readlines()
-
-    values_list = []
-    for line in lines:
-        lut_out = int(line.strip(), 16)#, "040b")
-        print(lut_out)
-        valid = ( lut_out >> 39 ) & 0x1;
-
-        if valid: 
-            unpacked_values = unpack_values(lut_out)
-            values_list.append(unpacked_values)
-
-    values = np.array(values_list)
-    return values
-
-def r_over_z(entry):
-    x = entry['good_tc_x'][0]
-    y = entry['good_tc_y'][0]
-    z = entry['good_tc_z'][0]
-    r = np.sqrt(np.sum(x**2 + y**2))
-   
-    return np.array(r/z)
-
-def merge_arrays(event, mif_data):
-    for tc in event:
-        for row_index, coords in enumerate(mif_data):
-            print(coords[:3], tc[:3])
-            if np.all(coords[:3] == tc[:3]): 
-                print(mif_data[row_index])
-                continue
 
 def prepare_geometry_txt():
     ''' old but working version, it reads the geometry 
@@ -101,7 +63,18 @@ def reading_input_file():
     'good_tc_cluster_id']
 
     tree  = uproot.open(filepath)[name_tree]
-    return tree.arrays(branches, entry_start=1, entry_stop=2, library='ak')
+    event, phi_gen = 0, -1
+    while not 0 < phi_gen < 2.02:
+        event += 1
+        phi_gen = tree.arrays(['event','good_genpart_exphi'], entry_start=event, 
+                             entry_stop=event+1, library='ak').good_genpart_exphi
+
+    data = tree.arrays(branches, entry_start=event, entry_stop=event+1, library='ak')
+    sorted_indices = ak.argsort(data['good_tc_energy'], ascending=False)
+    for key in data.fields:
+        if key != 'event':
+            data[key] = data[key][sorted_indices]
+    return data
 
 def get_module_hash(conversion, plane, u, v):
     filtered_rows = conversion[(conversion[:, 0] == plane) & 
@@ -134,32 +107,64 @@ def compress_value(value, exponent_bits=4, mantissa_bits=3, truncation_bits=0):
     # Build exponent and mantissa
     exponent = bitlen - mantissa_bits
     mantissa = (shifted_value >> (exponent - 1)) & ~(1 << mantissa_bits)
-
+   
     # Assemble floating-point
     compressed_value = ((1 << mantissa_bits) | mantissa) << (exponent - 1)
     compressed_code = (mantissa << exponent_bits) | exponent #(exponent << mantissa_bits) | mantissa
     return compressed_code
 
+def create_link(data_in):
+    return (data_in[2] << 30) | (data_in[1] << 15) | (data_in[0])
+
 def process_event():
     Nchannels = 84 * 3
+    LSB = 1/100 # 10 MeV
     xml_data = get_channel_frame()
     module_conversion = prepare_geometry_txt()
 
+    data_input = {}
     ds = reading_input_file()
     for event in ds.event:
         print('Processing event', event)
         ds_event = ds[ds.event == event]
-        data_input = {}
+        data_in_frames = {}
+        data_index = {}
         for tc_idx in range(len(ds_event.good_tc_x[0])):
             module = get_module_hash(module_conversion,
                                      ds_event.good_tc_layer[0][tc_idx],
                                      ds_event.good_tc_waferu[0][tc_idx],
                                      ds_event.good_tc_waferv[0][tc_idx])
-            column = int((3*(ds_event.good_tc_phi[0][tc_idx]-1.04)*84)/(2*3.14))
+            column = int((3*(ds_event.good_tc_phi[0][tc_idx])*84)/(2*3.14))
             data = get_frame_channel(xml_data, module, column)
             if not data: continue
             
-            frame, channel = int(data[0]['frame_id']), int(data[0]['channel_id'])
-            data_input[Nchannels*frame+channel] = compress_value(int(10*ds_event.good_tc_energy[0][tc_idx]))
-        break
+            if not (module, column) in data_index.keys():
+                data_index[(module, column)] = len(data)-1
+            elif data_index[(module, column)] != 0: 
+                 data_index[(module, column)] -= 1
+            else: continue
+
+            # there is room for this TC
+            frame, channel, glob_channel = (int(data[data_index[(module, column)]]['frame_id']), 
+                                            int(data[data_index[(module, column)]]['channel_id']), 
+                                            int(data[data_index[(module, column)]]['glob_channel']))
+
+            # print("TC having energy ", ds_event.good_tc_energy[0][tc_idx], "has frame and channel ", 
+            #       frame, glob_channel, "module, column", module, column)
+            
+            # packing of the data
+            n_link = math.floor(glob_channel/3)
+            if frame not in data_in_frames.keys():
+                data_in_frames[frame] = {}
+            if n_link not in data_in_frames[frame].keys():
+                data_in_frames[frame][n_link] = [0]*3
+            
+            data_in_frames[frame][n_link][channel%3] = compress_value(int(ds_event.good_tc_energy[0][tc_idx]/LSB))
+        break # only one event
+  
+    for frame in data_in_frames.keys():
+        for n_link in data_in_frames[frame].keys():
+            link_data = create_link(data_in_frames[frame][n_link])
+            data_input[84*frame+n_link] = link_data
+    
     return data_input

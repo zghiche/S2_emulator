@@ -1,4 +1,5 @@
 #include "L1Trigger/L1THGCal/interface/backend_emulator/HGCalLinkUnpacking_SA.h"
+#include <unistd.h> 
 
 using namespace std;
 using namespace l1thgcfirmware;
@@ -53,7 +54,6 @@ HGCalTriggerCellSAPtrCollection HGCalLinkUnpacking::triggerCellDistribution( con
       auto& lut_out = config_.TriggerCellDistributionLUT( ( Nframes*iColumn ) + frame );
       int valid = ( lut_out >> 39 ) & 0x1;
 
-      // std::cout << lut_out << std::endl;
       if( valid )
       {   
         int R_over_Z = ( lut_out >> 0 )  & 0xFFF;
@@ -61,7 +61,6 @@ HGCalTriggerCellSAPtrCollection HGCalLinkUnpacking::triggerCellDistribution( con
         int Layer    = ( lut_out >> 24 ) & 0x3F;
         int index    = ( lut_out >> 30 ) & 0x1FF;
  
-        // std::cout << R_over_Z << std::endl;
         auto& in = TriggerCellsIn.at( ( Nchannels * frame ) + index );       
         TriggerCellsOut.emplace_back(
           make_unique< HGCalTriggerCell >( 
@@ -73,6 +72,9 @@ HGCalTriggerCellSAPtrCollection HGCalLinkUnpacking::triggerCellDistribution( con
             in->data_.value_
           )
         );
+        // if (in->data_.value_ !=0) {
+        //    std::cout << Layer << ", " << Phi << ", " << in->data_.value_ << std::endl; 
+        // }
         auto& tc = TriggerCellsOut.back();
         tc->setClock(in->clock_ + stepLatency);
         tc->setIndex( iColumn );
@@ -88,15 +90,12 @@ HGCalTriggerCellSAPtrCollection HGCalLinkUnpacking::triggerCellDistribution( con
 void HGCalLinkUnpacking::unpackTriggerCells( const HGCalTriggerCellSAPtrCollection& triggerCells ) const
 {
   const unsigned int stepLatency = config_.getStepLatency( UnpackTriggerCells );
+  int mantissaBits_ = 3;
 
   for ( auto& tc : triggerCells ) {
-    uint32_t Energy = ( tc->energy() >> 4 ) & 0x7;
+    uint32_t Mantissa = ( tc->energy() >> 4 ) & 0x7;
     uint32_t Exponent = tc->energy() & 0xF;
-    // if (tc->energy() !=0) {
-    //    std::cout << tc->energy() << std::endl;
-    //    std::cout << Energy << Exponent << std::endl; 
-    // }
-    tc->setEnergy( Energy << Exponent );
+    tc->setEnergy( ((1ULL << mantissaBits_) | Mantissa) << (Exponent - 1) ); // Energy << Exponent );
     tc->addLatency( stepLatency );
   }
   
