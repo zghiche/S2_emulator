@@ -18,7 +18,7 @@ def get_input_data():
     LinksInData = std.vector['std::unique_ptr<l1thgcfirmware::HGCalLinkTriggerCell>']()
     HGCalLinkTriggerCell = l1thgcfirmware.HGCalLinkTriggerCell
     
-    data_input = tool.process_event()
+    data_input = tool.data_packer()
     for i in range(54432):
         LinksInData.push_back(std.make_unique[HGCalLinkTriggerCell]())
         if i in data_input.keys():
