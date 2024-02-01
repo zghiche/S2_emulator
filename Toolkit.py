@@ -1,6 +1,7 @@
 import cppyy
 from cppyy.gbl import std
 import math
+import awkward as ak
 
 from data_handle.geometry import provide_events, read_geometry_txt, read_xml
 
@@ -48,6 +49,9 @@ def get_module_hash(conversion, plane, u, v):
                                (conversion[:, 2] == v)]
     return int(filtered_rows[0][3])
 
+def get_TC_allocation(xml_data, module):
+    return xml_data[module]
+
 def get_frame_channel(xml_data, module, column):
     return xml_data[module][column]
 
@@ -58,50 +62,45 @@ def process_event(ds_event, geometry, xml_data):
     LSB = 1/100 # 10 MeV
     data_TCs = {}
     TC_index = {}
-    for tc_idx in range(len(ds_event.good_tc_x[0])):
-        module = get_module_hash(geometry,
-                                 ds_event.good_tc_layer[0][tc_idx],
-                                 ds_event.good_tc_waferu[0][tc_idx],
-                                 ds_event.good_tc_waferv[0][tc_idx])
-        column = int((3*(ds_event.good_tc_phi[0][tc_idx])*84)/(2*3.14))
     
-        data = get_frame_channel(xml_data, module, column)
-        if not data: continue
-        
-        if not (module, column) in TC_index.keys():
-             TC_index[(module,column)] = len(data)-1
-        elif TC_index[(module,column)] != 0: 
-             TC_index[(module,column)] -= 1
-        else: continue
+    for module_idx in range(len(ds_event.good_tc_x)):
+        module = get_module_hash(geometry,
+                                 ds_event.good_tc_layer[module_idx][0],
+                                 ds_event.good_tc_waferu[module_idx][0],
+                                 ds_event.good_tc_waferv[module_idx][0])
+        xml_alloc = get_TC_allocation(xml_data, module)
 
-        # allocating space for the current TC
-        allocation = data[TC_index[(module,column)]]
-        frame, channel, glb_channel = allocation['frame'], allocation['channel'], allocation['glb_channel']
- 
-        # print("TC having energy ", ds_event.good_tc_energy[0][tc_idx], "has frame and channel ", 
-        #      frame, glb_channel, "module, column", module, column)
-       
-        # TC data packing
-        n_link = math.floor(glb_channel/3)
-        if frame not in data_TCs.keys():
-            data_TCs[frame] = {}
-        if n_link not in data_TCs[frame].keys():
-            data_TCs[frame][n_link] = [0]*3
+        # calculating the number of TC that ca be allocated / module
+        # apply the cut to simulate the BC algorithm
+        n_TCs = xml_alloc[-1]['index']  # dangerous
         
-        data_TCs[frame][n_link][channel%3] = compress_value(int(ds_event.good_tc_energy[0][tc_idx]/LSB))
+        # simulating the phi sorting by the S1 FPGA
+        mod_phi = ds_event.good_tc_phi[module_idx][:n_TCs]
+        mod_energy = ds_event.good_tc_mipPt[module_idx][:n_TCs]
+        
+        mod_energy = mod_energy[ak.argsort(mod_phi)]
+        
+        print('Analysing module', module)
+        for tc_idx, TC_xml in enumerate(xml_alloc):
+            if tc_idx > len(mod_energy)-1: break
+            n_link = math.floor(TC_xml['glb_channel']/3)
+
+            if TC_xml['frame'] not in data_TCs.keys():
+                data_TCs[TC_xml['frame']] = {}
+            if n_link not in data_TCs[TC_xml['frame']].keys():
+                data_TCs[TC_xml['frame']][n_link] = [0]*3
+
+            data_TCs[TC_xml['frame']][n_link][TC_xml['channel']%3] = compress_value(int(mod_energy[tc_idx]/LSB))
     return data_TCs
-
+    
 def data_packer():
     xml_data = read_xml()
     geometry = read_geometry_txt()
 
     ds = provide_events()
-    for event in ds.event:
-        print('Processing event', event)
-        ds_event = ds[ds.event == event]
-        data_TCs = process_event(ds_event, geometry, xml_data)
-        break # only one event
-  
+    print('Processing event..')
+    data_TCs = process_event(ds[0], geometry, xml_data)
+
     # packing data in links 
     data_links = {}
     for frame in data_TCs.keys():
