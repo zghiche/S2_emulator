@@ -1,6 +1,7 @@
 import cppyy
 from cppyy.gbl import std
 import math
+import numpy as np
 import awkward as ak
 
 from data_handle.geometry import provide_events, read_geometry_txt, read_xml
@@ -49,6 +50,9 @@ def get_module_hash(conversion, plane, u, v):
                                (conversion[:, 2] == v)]
     return int(filtered_rows[0][3])
 
+# def compute_r_over_z(x, y, z):
+#     return np.sqrt(x**2 + y**2)/z
+
 def get_TC_allocation(xml_data, module):
     return xml_data[module]
 
@@ -56,12 +60,16 @@ def get_frame_channel(xml_data, module, column):
     return xml_data[module][column]
 
 def create_link(data_in):
-    return (data_in[2] << 30) | (data_in[1] << 15) | (data_in[0])
+    energy   = (data_in[2][0] << 30) | (data_in[1][0] << 15) | (data_in[0][0])
+    r_over_z = (data_in[2][1] << 30) | (data_in[1][1] << 15) | (data_in[0][1])
+    phi      = (data_in[2][2] << 30) | (data_in[1][2] << 15) | (data_in[0][2])
+    return [energy, r_over_z, phi]
 
 def process_event(ds_event, geometry, xml_data):
     LSB = 1/100 # 10 MeV
+    LSB_phi = np.pi/1944
+    LSB_r_z = 0.7/4096
     data_TCs = {}
-    TC_index = {}
     
     for module_idx in range(len(ds_event.good_tc_x)):
         module = get_module_hash(geometry,
@@ -73,13 +81,13 @@ def process_event(ds_event, geometry, xml_data):
         # calculating the number of TC that ca be allocated / module
         # apply the cut to simulate the BC algorithm
         n_TCs = xml_alloc[-1]['index']  # dangerous
-        
+
         # simulating the phi sorting by the S1 FPGA
         mod_phi = ds_event.good_tc_phi[module_idx][:n_TCs]
-        mod_energy = ds_event.good_tc_mipPt[module_idx][:n_TCs]
-        
-        mod_energy = mod_energy[ak.argsort(mod_phi)]
-        
+        mod_energy = ds_event.good_tc_mipPt[module_idx][:n_TCs][ak.argsort(mod_phi)]
+        mod_r_over_z = ds_event.r_over_z[module_idx][:n_TCs][ak.argsort(mod_phi)]
+        mod_phi = ak.sort(mod_phi)       
+ 
         print('Analysing module', module)
         for tc_idx, TC_xml in enumerate(xml_alloc):
             if tc_idx > len(mod_energy)-1: break
@@ -88,9 +96,13 @@ def process_event(ds_event, geometry, xml_data):
             if TC_xml['frame'] not in data_TCs.keys():
                 data_TCs[TC_xml['frame']] = {}
             if n_link not in data_TCs[TC_xml['frame']].keys():
-                data_TCs[TC_xml['frame']][n_link] = [0]*3
+                data_TCs[TC_xml['frame']][n_link] = [[0]*3]*3
 
-            data_TCs[TC_xml['frame']][n_link][TC_xml['channel']%3] = compress_value(int(mod_energy[tc_idx]/LSB))
+            data_TCs[TC_xml['frame']][n_link][TC_xml['channel']%3] = [
+                compress_value(int(mod_energy[tc_idx]/LSB)),
+                compress_value(int(mod_r_over_z[tc_idx]/LSB_r_z)),
+                compress_value(int(mod_phi[tc_idx]/LSB_phi))
+                ]
     return data_TCs
     
 def data_packer():

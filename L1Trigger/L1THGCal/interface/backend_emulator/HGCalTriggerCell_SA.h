@@ -49,6 +49,8 @@ namespace l1thgcfirmware {
     void setIndex(const unsigned int index) { index_ = index; }
     void setDeltaR2(const unsigned int deltaR2) { deltaR2_ = deltaR2; }
     void setEnergy(const unsigned int energy) { energy_ = energy; }
+    void setROverZ(const unsigned int rOverZ) { rOverZ_ = rOverZ; }
+    void setPhi(const unsigned int phi) { phi_ = phi; }
     void setDX(const int dX) { dX_ = dX; }
     void setY(const unsigned int Y) { Y_ = Y; }
     void setLastFrame(const bool isLastFrame ) { lastFrame_ = isLastFrame; }

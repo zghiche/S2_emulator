@@ -19,7 +19,7 @@ namespace l1thgcfirmware {
 
     void unpackLinks( const l1thgcfirmware::HGCalLinkTriggerCellSAPtrCollection& LinksIn , l1thgcfirmware::HGCalLinkTriggerCellSAPtrCollection& TriggerCells , l1thgcfirmware::HGCalLinkTriggerCellSAPtrCollection& Towers ) const;
     l1thgcfirmware::HGCalTriggerCellSAPtrCollection triggerCellDistribution( const l1thgcfirmware::HGCalLinkTriggerCellSAPtrCollection& TriggerCells ) const;
-    void unpackTriggerCells( const l1thgcfirmware::HGCalTriggerCellSAPtrCollection& TriggerCells ) const;
+    void unpackTriggerCells( l1thgcfirmware::HGCalTriggerCellSAPtrCollection& TriggerCells ) const;
 
   private:
 

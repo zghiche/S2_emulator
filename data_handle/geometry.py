@@ -64,7 +64,8 @@ def provide_events():
                              entry_stop=event+1, library='ak').good_genpart_exphi
 
     data = tree.arrays(branches, entry_start=event, entry_stop=event+1, library='ak')
-   
+
+    data['r_over_z'] = np.sqrt(data.good_tc_x**2 + data.good_tc_y**2)/data.good_tc_z
     # sorting by modules  
     sorted_waferu = data[ak.argsort(data['good_tc_waferu'])]
     counts = ak.flatten(ak.run_lengths(sorted_waferu.good_tc_waferu), axis=None)

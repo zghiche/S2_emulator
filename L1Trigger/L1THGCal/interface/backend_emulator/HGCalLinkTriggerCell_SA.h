@@ -28,6 +28,8 @@ namespace l1thgcfirmware {
     HGCalLinkTriggerCell() : clock_(0),
                         index_(0),
                         data_(0),
+                        r_over_z_(0),
+                        phi_(0),
                         lastFrame_(false),
                         dataValid_(false) {}
 
@@ -57,6 +59,8 @@ namespace l1thgcfirmware {
     unsigned int clock_;
     unsigned int index_; 
     binary data_;
+    binary r_over_z_;
+    binary phi_;
     bool lastFrame_;
     bool dataValid_;
 
