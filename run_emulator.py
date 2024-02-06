@@ -40,7 +40,7 @@ def run_algorithm(config):
 
     # for tc in unpackedTCs:
     #   if tc.energy() > 0:
-    #     print("TC : ", tc.energy())
+    #     print("TC : ", tc.rOverZ())
 
     histogram = l1thgcfirmware.HGCalHistogramCellSAPtrCollection()
     seeding_.runSeeding(unpackedTCs, histogram)

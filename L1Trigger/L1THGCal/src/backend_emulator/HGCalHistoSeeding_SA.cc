@@ -40,6 +40,7 @@ void HGCalHistoSeeding::triggerCellToHistogramCell(const HGCalTriggerCellSAPtrCo
 
   histogramOut.clear();
   for (auto& tc : triggerCellsIn) {
+
     auto hc = make_unique<HGCalHistogramCell>(tc->clock() + latency,
                                         tc->index(),
                                         tc->energy(),

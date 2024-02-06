@@ -68,8 +68,8 @@ HGCalTriggerCellSAPtrCollection HGCalLinkUnpacking::triggerCellDistribution( con
         int Layer    = ( lut_out >> 24 ) & 0x3F;
         int index    = ( lut_out >> 30 ) & 0x1FF;
 
-        // cout << R_over_Z << ", " << Phi << endl;
         auto& in = TriggerCellsIn.at( ( Nchannels * frame ) + index );       
+        if (in->data_.value_ != 0) {
         TriggerCellsOut.emplace_back(
           make_unique< HGCalTriggerCell >( 
             (frame==Nframes-1),
@@ -83,6 +83,7 @@ HGCalTriggerCellSAPtrCollection HGCalLinkUnpacking::triggerCellDistribution( con
         auto& tc = TriggerCellsOut.back();
         tc->setClock(in->clock_ + stepLatency);
         tc->setIndex( iColumn );
+        }
       }
     }
   }
@@ -113,18 +114,6 @@ void HGCalLinkUnpacking::unpackTriggerCells(HGCalTriggerCellSAPtrCollection& tri
     uint32_t rOverZExponent = tc->rOverZ() & 0xF;
     tc->setROverZ(((1ULL << mantissaBits_) | rOverZMantissa) << (rOverZExponent - 1));
 
-    // if (tc->energy() > 0) {
-    //   std::cout << tc->energy()  << ", " << tc->phi() << ", " << tc->rOverZ() << std::endl;
-    // }
     tc->addLatency( stepLatency );
   }
-
-  sort(triggerCells.begin(), triggerCells.end(), [](auto& a, auto& b) {
-         return a->rOverZ() > b->rOverZ();
-       });
-  // for ( auto& tc : triggerCells ) {
-  //  if (tc->energy() != 0) {
-  //    std::cout << tc->rOverZ() << ", " << tc->phi() << std::endl;
-  // }}
-
 }
