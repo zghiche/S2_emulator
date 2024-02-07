@@ -40,10 +40,14 @@ def run_algorithm(config):
 
     # for tc in unpackedTCs:
     #   if tc.energy() > 0:
-    #     print("TC : ", tc.rOverZ())
+    #     print("Energy : ", tc.energy(), "Phi", tc.phi(), "R/Z", tc.rOverZ(), "Column", tc.index())
 
     histogram = l1thgcfirmware.HGCalHistogramCellSAPtrCollection()
     seeding_.runSeeding(unpackedTCs, histogram)
+
+    # for bin in histogram:
+    #   if bin.X() > 0:
+    #     print("Energy : ", bin.S(), "R/Z bin", bin.sortKey(), "col", bin.index())
 
     clusters = l1thgcfirmware.HGCalClusterSAPtrCollection()
     clustering_.runClustering(unpackedTCs, histogram, clusters)

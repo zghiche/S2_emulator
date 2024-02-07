@@ -11,7 +11,7 @@ def read_geometry_txt():
     return np.loadtxt(geometry_file, delimiter=' ', usecols=(0,1,2,37), skiprows=1) #'plane','u','v','hash'
 
 def read_xml():
-    tree = ET.parse('../../mapping/FE2BE_mapping/checks_FE_BE/xml/S1toChannels.SeparateTD.120.SingleTypes.NoSplit.xml')
+    tree = ET.parse('config_files/S1toChannels.SeparateTD.120.MixedTypes.NoSplit.xml')
     root = tree.getroot()
 
     reversed_data = defaultdict(list)#lambda: defaultdict(list))

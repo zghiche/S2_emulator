@@ -6,8 +6,8 @@ using namespace std;
 using namespace l1thgcfirmware;
 ClusterAlgoConfig::ClusterAlgoConfig() :
   // clusterizerOffset_(0),
-  TriggerCellDistributionLUT_( OpenMif("S2.CombinedTD.Balanced60.MixedTypes.NoSplit.mif") ),
-  TriggerCellAddressLUT_( OpenMif("S2.TCaddr.CombinedTD.Balanced60.MixedTypes.NoSplit.mif") ),  
+  TriggerCellDistributionLUT_( OpenMif("config_files/S2.mif") ), // SeparateTD.120.MixedTypes.NoSplit
+  TriggerCellAddressLUT_( OpenMif("config_files/S2.TCaddr.mif") ),  
   cClocks_(0),
   cInputs_(0),
   cInputs2_(0),
@@ -73,8 +73,8 @@ ClusterAlgoConfig::ClusterAlgoConfig(unsigned int cClocks, unsigned int cInputs,
                                      const std::vector<unsigned int>& layerWeights_E, const std::vector<unsigned int>& layerWeights_E_EM,
                                      const std::vector<unsigned int>& layerWeights_E_EM_core,
                                      const std::vector<unsigned int>& layerWeights_E_H_early, unsigned int correction, unsigned int saturation) :
-  TriggerCellDistributionLUT_( OpenMif("S2.CombinedTD.Balanced60.MixedTypes.NoSplit.mif") ),
-  TriggerCellAddressLUT_( OpenMif("S2.TCaddr.CombinedTD.Balanced60.MixedTypes.NoSplit.mif") ),  
+  TriggerCellDistributionLUT_( OpenMif("config_files/S2.mif") ),
+  TriggerCellAddressLUT_( OpenMif("config_files/S2.TCaddr.mif") ),  
   cClocks_(cClocks),
   cInputs_(cInputs),
   cInputs2_(cInputs2),

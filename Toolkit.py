@@ -50,14 +50,8 @@ def get_module_hash(conversion, plane, u, v):
                                (conversion[:, 2] == v)]
     return int(filtered_rows[0][3])
 
-# def compute_r_over_z(x, y, z):
-#     return np.sqrt(x**2 + y**2)/z
-
 def get_TC_allocation(xml_data, module):
     return xml_data[module]
-
-def get_frame_channel(xml_data, module, column):
-    return xml_data[module][column]
 
 def create_link(data_in):
     energy   = (data_in[2][0] << 30) | (data_in[1][0] << 15) | (data_in[0][0])
@@ -77,7 +71,7 @@ def process_event(ds_event, geometry, xml_data):
                                  ds_event.good_tc_waferu[module_idx][0],
                                  ds_event.good_tc_waferv[module_idx][0])
         xml_alloc = get_TC_allocation(xml_data, module)
-
+        
         # calculating the number of TC that ca be allocated / module
         # apply the cut to simulate the BC algorithm
         n_TCs = xml_alloc[-1]['index']  # dangerous
@@ -87,7 +81,7 @@ def process_event(ds_event, geometry, xml_data):
         mod_energy = ds_event.good_tc_mipPt[module_idx][:n_TCs][ak.argsort(mod_phi)]
         mod_r_over_z = ds_event.r_over_z[module_idx][:n_TCs][ak.argsort(mod_phi)]
         mod_phi = ak.sort(mod_phi)       
- 
+
         print('Analysing module', module)
         for tc_idx, TC_xml in enumerate(xml_alloc):
             if tc_idx > len(mod_energy)-1: break
