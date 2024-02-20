@@ -79,6 +79,7 @@ class HGCalHistogramCell {
     unsigned int Y() const { return Y_; }
     unsigned int N() const { return N_; }
     unsigned int sortKey() const { return sortKey_; }
+    unsigned int maximaOffset() const { return maximaOffset_; }
     bool lastFrame() const { return lastFrame_; }
     bool dataValid() const { return dataValid_; }
 

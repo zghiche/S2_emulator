@@ -1,4 +1,6 @@
 import os
+import numpy as np
+import matplotlib.pyplot as plt
 import yaml
 import Toolkit as tool
 import cppyy
@@ -28,6 +30,26 @@ def get_input_data():
     
     return LinksInData
 
+def create_plot(objects, step):
+    heatmap_data = np.zeros((64, 124)) 
+    
+    for object in objects:
+      if (step==0) and (object.energy()>0): heatmap_data[int((object.rOverZ()-440)/64)-1, object.index()-1] += (object.energy())/100
+      # print("Energy : ", tc.energy(), "Phi", tc.phi(), "R/Z", tc.rOverZ(), "Column", tc.index())
+      
+      if (step==1) and (object.X()>0):      heatmap_data[object.sortKey()-1, object.index()-1] += (object.S())/100
+      # print("Smeared Energy : ", bin.S(), "R/Z bin", bin.sortKey(), "col", bin.index())
+    
+    title = 'Unpacked Energy' if step==0 else 'Smeared Energy'
+    plt.imshow(heatmap_data, cmap='viridis', aspect='auto')
+    plt.xlabel('Column')
+    plt.ylabel('R/Z Bin')
+    plt.title('Heatmap ' + title)
+    plt.colorbar(label = title)
+    plt.savefig('plots/'+title.replace(' ', '_')+'.pdf')
+    plt.clf()
+
+
 def run_algorithm(config):
     ''' Calling the emulator algorithm in all its steps '''
 
@@ -37,21 +59,17 @@ def run_algorithm(config):
 
     unpackedTCs = l1thgcfirmware.HGCalTriggerCellSAPtrCollection()
     linkUnpacking_.runLinkUnpacking(get_input_data(), unpackedTCs);
-
-    # for tc in unpackedTCs:
-    #   if tc.energy() > 0:
-    #     print("Energy : ", tc.energy(), "Phi", tc.phi(), "R/Z", tc.rOverZ(), "Column", tc.index())
+    # create_plot(unpackedTCs, 0)
 
     histogram = l1thgcfirmware.HGCalHistogramCellSAPtrCollection()
     seeding_.runSeeding(unpackedTCs, histogram)
-
-    # for bin in histogram:
-    #   if bin.X() > 0:
-    #     print("Energy : ", bin.S(), "R/Z bin", bin.sortKey(), "col", bin.index())
+    # create_plot(histogram, 1)
 
     clusters = l1thgcfirmware.HGCalClusterSAPtrCollection()
     clustering_.runClustering(unpackedTCs, histogram, clusters)
 
+    #for cluster in clusters:
+    #  print('ciao')
 
 if __name__ == '__main__':
     tool.define_map(params)
