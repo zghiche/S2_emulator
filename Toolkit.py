@@ -2,6 +2,7 @@ import cppyy
 from cppyy.gbl import std
 import math
 import numpy as np
+import matplotlib.pyplot as plt
 import awkward as ak
 
 from data_handle.geometry import provide_events, read_geometry_txt, read_xml
@@ -11,7 +12,7 @@ def compress_value(value, exponent_bits=4, mantissa_bits=3, truncation_bits=0):
     saturation_value = ((1 << (mantissa_bits + truncation_bits + 1)) - 1) << ((1 << exponent_bits) - 2)
 
     if value > saturation_value:
-        return saturation_code
+        return saturation_value, saturation_code
 
     bitlen = 0
     shifted_value = value >> truncation_bits
@@ -23,7 +24,7 @@ def compress_value(value, exponent_bits=4, mantissa_bits=3, truncation_bits=0):
     if bitlen <= mantissa_bits:
         compressed_code = shifted_value
         compressed_value = shifted_value << truncation_bits
-        return compressed_code
+        return compressed_value, compressed_code
 
     # Build exponent and mantissa
     exponent = bitlen - mantissa_bits
@@ -32,7 +33,7 @@ def compress_value(value, exponent_bits=4, mantissa_bits=3, truncation_bits=0):
     # Assemble floating-point
     compressed_value = ((1 << mantissa_bits) | mantissa) << (exponent - 1)
     compressed_code = (mantissa << exponent_bits) | exponent #(exponent << mantissa_bits) | mantissa
-    return compressed_code
+    return compressed_value, compressed_code
 
 def define_map(params):
     enum = cppyy.gbl.l1thgcfirmware.Step
@@ -60,18 +61,20 @@ def create_link(data_in):
     return [energy, r_over_z, phi]
 
 def process_event(ds_event, geometry, xml_data):
-    LSB = 1/100 # 10 MeV
+    LSB = 1/100000 # 10 keV
     LSB_phi = np.pi/1944
     LSB_r_z = 0.7/4096
     data_TCs = {}
-    
+   
+    plotting = 1
+    if plotting: heatmap_python = np.zeros((64, 124))
     for module_idx in range(len(ds_event.good_tc_x)):
         module = get_module_hash(geometry,
                                  ds_event.good_tc_layer[module_idx][0],
                                  ds_event.good_tc_waferu[module_idx][0],
                                  ds_event.good_tc_waferv[module_idx][0])
         xml_alloc = get_TC_allocation(xml_data, module)
-        
+
         # calculating the number of TC that ca be allocated / module
         # apply the cut to simulate the BC algorithm
         n_TCs = xml_alloc[-1]['index']  # dangerous
@@ -92,11 +95,26 @@ def process_event(ds_event, geometry, xml_data):
             if n_link not in data_TCs[TC_xml['frame']].keys():
                 data_TCs[TC_xml['frame']][n_link] = [[0]*3]*3
 
+            # print(int((compress_value(int(mod_r_over_z[tc_idx]/LSB_r_z))[0]-440)/64), int(124*mod_phi[tc_idx]/3.14)-1, compress_value(int(mod_energy[tc_idx]/LSB))[0])
+            # print(compress_value(int(mod_r_over_z[tc_idx]/LSB_r_z)))
+
+            if plotting: heatmap_python[int((compress_value(int(mod_r_over_z[tc_idx]/LSB_r_z))[0]-440)/64)-1, 
+                         int(124*mod_phi[tc_idx]/3.14)-1] += compress_value(int(mod_energy[tc_idx]/LSB))[0]
+            
             data_TCs[TC_xml['frame']][n_link][TC_xml['channel']%3] = [
-                compress_value(int(mod_energy[tc_idx]/LSB)),
-                compress_value(int(mod_r_over_z[tc_idx]/LSB_r_z)),
-                compress_value(int(mod_phi[tc_idx]/LSB_phi))
+                compress_value(int(mod_energy[tc_idx]/LSB))[1],
+                compress_value(int(mod_r_over_z[tc_idx]/LSB_r_z))[1],
+                compress_value(int(mod_phi[tc_idx]/LSB_phi))[1]
                 ]
+    
+    if plotting: 
+      plt.imshow(heatmap_python, cmap='viridis', aspect='auto')
+      plt.colorbar(label='Input Energy')
+      plt.xlabel('Column')
+      plt.ylabel('R/Z Bin')
+      plt.title('Heatmap of Energy, python')
+      plt.savefig('plots/heatmap_energy_python.pdf') 
+      plt.clf()
     return data_TCs
     
 def data_packer():

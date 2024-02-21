@@ -21,7 +21,7 @@ def get_input_data():
     HGCalLinkTriggerCell = l1thgcfirmware.HGCalLinkTriggerCell
     
     data_input = tool.data_packer()
-    for link_frame in range(84*216):
+    for link_frame in range(84*108):
         LinksInData.push_back(std.make_unique[HGCalLinkTriggerCell]())
         if link_frame in data_input.keys():
             LinksInData[-1].data_     = data_input[link_frame][0]
@@ -34,11 +34,13 @@ def create_plot(objects, step):
     heatmap_data = np.zeros((64, 124)) 
     
     for object in objects:
-      if (step==0) and (object.energy()>0): heatmap_data[int((object.rOverZ()-440)/64)-1, object.index()-1] += (object.energy())/100
-      # print("Energy : ", tc.energy(), "Phi", tc.phi(), "R/Z", tc.rOverZ(), "Column", tc.index())
+      if (step==0) and (object.energy()>0): 
+         heatmap_data[int((object.rOverZ()-440)/64)-1, int(124/1944*object.phi())-1] += (object.energy())/100
+         print("Energy : ", object.energy(), "Phi", object.phi(), "R/Z", int((object.rOverZ()-440)/64), "Column", object.index())
       
-      if (step==1) and (object.X()>0):      heatmap_data[object.sortKey()-1, object.index()-1] += (object.S())/100
-      # print("Smeared Energy : ", bin.S(), "R/Z bin", bin.sortKey(), "col", bin.index())
+      if (step==1) and (object.S()>0):
+         heatmap_data[object.sortKey()-1, object.index()-1] += (object.S())/100
+         # if object.S()>0: print("Smeared Energy : ", object.S(), "R/Z bin", object.sortKey(), "col", object.index())
     
     title = 'Unpacked Energy' if step==0 else 'Smeared Energy'
     plt.imshow(heatmap_data, cmap='viridis', aspect='auto')
@@ -68,6 +70,7 @@ def run_algorithm(config):
     clusters = l1thgcfirmware.HGCalClusterSAPtrCollection()
     clustering_.runClustering(unpackedTCs, histogram, clusters)
 
+    print(clusters)
     #for cluster in clusters:
     #  print('ciao')
 
