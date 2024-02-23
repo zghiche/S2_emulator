@@ -46,10 +46,17 @@ def define_map(params):
     params['stepLatency'] = map_custom
 
 def get_module_hash(conversion, plane, u, v):
+    # CMSSW to our u v convention u'=v-u, v'=v
     filtered_rows = conversion[(conversion[:, 0] == plane) & 
-                               (conversion[:, 1] == u) &
+                               (conversion[:, 1] == v-u) &
                                (conversion[:, 2] == v)]
-    return int(filtered_rows[0][3])
+    if len(filtered_rows)==0:
+        print('Module not found:', plane, v-u, v)
+        print('CMSSW coord: ', plane, u, v)
+        return 
+    else: 
+        print('Analysing module ', plane, v-u, v)
+        return int(filtered_rows[0][3])
 
 def get_TC_allocation(xml_data, module):
     return xml_data[module]
@@ -60,7 +67,10 @@ def create_link(data_in):
     phi      = (data_in[2][2] << 30) | (data_in[1][2] << 15) | (data_in[0][2])
     return [energy, r_over_z, phi]
 
-def process_event(ds_event, geometry, xml_data):
+def process_event(ds_event):
+    xml_data = read_xml()
+    geometry = read_geometry_txt()
+
     LSB = 1/100000 # 10 keV
     LSB_phi = np.pi/1944
     LSB_r_z = 0.7/4096
@@ -68,24 +78,26 @@ def process_event(ds_event, geometry, xml_data):
    
     plotting = 1
     if plotting: heatmap_python = np.zeros((64, 124))
+    
     for module_idx in range(len(ds_event.good_tc_x)):
         module = get_module_hash(geometry,
                                  ds_event.good_tc_layer[module_idx][0],
                                  ds_event.good_tc_waferu[module_idx][0],
                                  ds_event.good_tc_waferv[module_idx][0])
+        if not module: continue
         xml_alloc = get_TC_allocation(xml_data, module)
 
         # calculating the number of TC that ca be allocated / module
         # apply the cut to simulate the BC algorithm
         n_TCs = xml_alloc[-1]['index']  # dangerous
+        columns = [frame['column'] for frame in xml_alloc]
 
         # simulating the phi sorting by the S1 FPGA
-        mod_phi = ds_event.good_tc_phi[module_idx][:n_TCs]
-        mod_energy = ds_event.good_tc_mipPt[module_idx][:n_TCs][ak.argsort(mod_phi)]
-        mod_r_over_z = ds_event.r_over_z[module_idx][:n_TCs][ak.argsort(mod_phi)]
+        mod_phi = ds_event.good_tc_phi[module_idx][:n_TCs+1]
+        mod_energy = ds_event.good_tc_mipPt[module_idx][:n_TCs+1][ak.argsort(mod_phi)]
+        mod_r_over_z = ds_event.r_over_z[module_idx][:n_TCs+1][ak.argsort(mod_phi)]
         mod_phi = ak.sort(mod_phi)       
 
-        print('Analysing module', module)
         for tc_idx, TC_xml in enumerate(xml_alloc):
             if tc_idx > len(mod_energy)-1: break
             n_link = math.floor(TC_xml['glb_channel']/3)
@@ -94,9 +106,6 @@ def process_event(ds_event, geometry, xml_data):
                 data_TCs[TC_xml['frame']] = {}
             if n_link not in data_TCs[TC_xml['frame']].keys():
                 data_TCs[TC_xml['frame']][n_link] = [[0]*3]*3
-
-            # print(int((compress_value(int(mod_r_over_z[tc_idx]/LSB_r_z))[0]-440)/64), int(124*mod_phi[tc_idx]/3.14)-1, compress_value(int(mod_energy[tc_idx]/LSB))[0])
-            # print(compress_value(int(mod_r_over_z[tc_idx]/LSB_r_z)))
 
             if plotting: heatmap_python[int((compress_value(int(mod_r_over_z[tc_idx]/LSB_r_z))[0]-440)/64)-1, 
                          int(124*mod_phi[tc_idx]/3.14)-1] += compress_value(int(mod_energy[tc_idx]/LSB))[0]
@@ -107,7 +116,7 @@ def process_event(ds_event, geometry, xml_data):
                 compress_value(int(mod_phi[tc_idx]/LSB_phi))[1]
                 ]
     
-    if plotting: 
+    if plotting:
       plt.imshow(heatmap_python, cmap='viridis', aspect='auto')
       plt.colorbar(label='Input Energy')
       plt.xlabel('Column')
@@ -117,13 +126,10 @@ def process_event(ds_event, geometry, xml_data):
       plt.clf()
     return data_TCs
     
-def data_packer():
-    xml_data = read_xml()
-    geometry = read_geometry_txt()
-
-    ds = provide_events()
-    print('Processing event..')
-    data_TCs = process_event(ds[0], geometry, xml_data)
+def data_packer(ds):
+    print('Processing event..', ds[1].event[0], \
+          '(eta, phi) =', ds[1].good_genpart_exeta[0][0], ds[1].good_genpart_exphi[0][0])
+    data_TCs = process_event(ds[0][0])
 
     # packing data in links 
     data_links = {}

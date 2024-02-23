@@ -40,32 +40,22 @@ def apply_sort(df, counts, axis):
         df[field] = ak.unflatten(df[field], counts, axis)
     return df
 
-def provide_events():
-    filepath = '../../building_ROI/skim_small_photons_0PU_bc_stc_hadd.root'
-    name_tree = "FloatingpointMixedbcstcrealsig4DummyHistomaxxydr015GenmatchGenclustersntuple/HGCalTriggerNtuple"
-
-    branches = [#'event',
-    'good_tc_x',
-    'good_tc_y',
-    'good_tc_z',
-    'good_tc_phi',
-    'good_tc_layer',
-    'good_tc_waferu',
-    'good_tc_waferv',
-    'good_tc_energy',
-    'good_tc_mipPt',
-    'good_tc_cluster_id']
-
-    tree  = uproot.open(filepath)[name_tree]
-    event, phi_gen = 0, -1
-    while not 0 < phi_gen < 2.02:
-        event += 1
-        phi_gen = tree.arrays(['event','good_genpart_exphi'], entry_start=event, 
-                             entry_stop=event+1, library='ak').good_genpart_exphi
-
-    data = tree.arrays(branches, entry_start=event, entry_stop=event+1, library='ak')
-    data['r_over_z'] = np.sqrt(data.good_tc_x**2 + data.good_tc_y**2)/data.good_tc_z
+def provide_event(tree, event):
+    branches_tc = [
+        'good_tc_x', 'good_tc_y', 'good_tc_z',
+        'good_tc_phi', 'good_tc_layer',
+        'good_tc_waferu', 'good_tc_waferv',
+        'good_tc_energy', 'good_tc_mipPt'
+    ]
     
+    branches_gen = [
+        'event', 'good_genpart_exeta', 'good_genpart_exphi', 'good_genpart_energy'
+    ]
+
+    data = tree.arrays(branches_tc, entry_start=event, entry_stop=event+1, library='ak')
+    data_gen = tree.arrays(branches_gen, entry_start=event, entry_stop=event+1, library='ak')
+    data['r_over_z'] = np.sqrt(data.good_tc_x**2 + data.good_tc_y**2)/data.good_tc_z
+
     # sorting by modules  
     sorted_waferu = data[ak.argsort(data['good_tc_waferu'])]
     counts = ak.flatten(ak.run_lengths(sorted_waferu.good_tc_waferu), axis=None)
@@ -78,4 +68,22 @@ def provide_events():
     
     # sorting by transverse energy, simulating the ECONT_T
     sorted_df = sorted_df[ak.argsort(sorted_df['good_tc_mipPt'], ascending=False)]
-    return sorted_df
+    return [sorted_df, data_gen]
+    
+def provide_events(n=1):
+    filepath = '/data_CMS/cms/ehle/L1HGCAL/PU0/photons/skims/skim_tightTC_dRxy_hadd.root' 
+    # filepath = '../../building_ROI/skim_small_photons_0PU_bc_stc_hadd.root'
+    name_tree = "FloatingpointMixedbcstcrealsig4DummyHistomaxxydr015GenmatchGenclustersntuple/HGCalTriggerNtuple"
+
+    tree  = uproot.open(filepath)[name_tree]
+    event, events = 0, []
+    for n_ev in range(n):
+      phi_gen = -1
+      while not 0 < phi_gen < 1.80:
+        event += 1
+        phi_gen = tree.arrays(['event','good_genpart_exphi'], entry_start=event,
+                             entry_stop=event+1, library='ak').good_genpart_exphi
+      events.append(event)
+
+    events_ds = [provide_event(tree, ev) for ev in events]
+    return events_ds
