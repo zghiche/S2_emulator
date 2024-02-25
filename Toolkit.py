@@ -2,10 +2,10 @@ import cppyy
 from cppyy.gbl import std
 import math
 import numpy as np
-import matplotlib.pyplot as plt
 import awkward as ak
 
 from data_handle.geometry import provide_events, read_geometry_txt, read_xml
+import data_handle.plot_tools as plot 
 
 def compress_value(value, exponent_bits=4, mantissa_bits=3, truncation_bits=0):
     saturation_code = (1 << (exponent_bits + mantissa_bits)) - 1
@@ -15,7 +15,7 @@ def compress_value(value, exponent_bits=4, mantissa_bits=3, truncation_bits=0):
         return saturation_value, saturation_code
 
     bitlen = 0
-    shifted_value = value >> truncation_bits
+    shifted_value = int(value) >> truncation_bits
     valcopy = shifted_value
     while valcopy != 0:
         valcopy >>= 1
@@ -49,14 +49,12 @@ def get_module_hash(conversion, plane, u, v):
     # CMSSW to our u v convention u'=v-u, v'=v
     filtered_rows = conversion[(conversion[:, 0] == plane) & 
                                (conversion[:, 1] == v-u) &
-                               (conversion[:, 2] == v)]
-    if len(filtered_rows)==0:
-        print('Module not found:', plane, v-u, v)
-        print('CMSSW coord: ', plane, u, v)
-        return 
+                               (conversion[:, 2] == v)][0]
+    if not filtered_rows.all():
+        print('Module not found:', plane, v-u, v, 'CMSSW coord: ', plane, u, v)
     else: 
         print('Analysing module ', plane, v-u, v)
-        return int(filtered_rows[0][3])
+        return int(filtered_rows[3])
 
 def get_TC_allocation(xml_data, module):
     return xml_data[module]
@@ -67,7 +65,7 @@ def create_link(data_in):
     phi      = (data_in[2][2] << 30) | (data_in[1][2] << 15) | (data_in[0][2])
     return [energy, r_over_z, phi]
 
-def process_event(ds_event):
+def process_event(ds_TCs, ds_gen, args):
     xml_data = read_xml()
     geometry = read_geometry_txt()
 
@@ -76,26 +74,23 @@ def process_event(ds_event):
     LSB_r_z = 0.7/4096
     data_TCs = {}
    
-    plotting = 1
-    if plotting: heatmap_python = np.zeros((64, 124))
-    
-    for module_idx in range(len(ds_event.good_tc_x)):
+    if args.plot: heatmap = np.zeros((64, 124))
+    for module_idx in range(len(ds_TCs.good_tc_x)):
         module = get_module_hash(geometry,
-                                 ds_event.good_tc_layer[module_idx][0],
-                                 ds_event.good_tc_waferu[module_idx][0],
-                                 ds_event.good_tc_waferv[module_idx][0])
+                                 ds_TCs.good_tc_layer[module_idx][0],
+                                 ds_TCs.good_tc_waferu[module_idx][0],
+                                 ds_TCs.good_tc_waferv[module_idx][0])
         if not module: continue
         xml_alloc = get_TC_allocation(xml_data, module)
 
         # calculating the number of TC that ca be allocated / module
-        # apply the cut to simulate the BC algorithm
         n_TCs = xml_alloc[-1]['index']  # dangerous
         columns = [frame['column'] for frame in xml_alloc]
 
-        # simulating the phi sorting by the S1 FPGA
-        mod_phi = ds_event.good_tc_phi[module_idx][:n_TCs+1]
-        mod_energy = ds_event.good_tc_mipPt[module_idx][:n_TCs+1][ak.argsort(mod_phi)]
-        mod_r_over_z = ds_event.r_over_z[module_idx][:n_TCs+1][ak.argsort(mod_phi)]
+        # simulating the BC algorithm (ECON-T) and the phi sorting in the S1 FPGA
+        mod_phi = ds_TCs.good_tc_phi[module_idx][:n_TCs+1]
+        mod_energy = ds_TCs.good_tc_mipPt[module_idx][:n_TCs+1][ak.argsort(mod_phi)]
+        mod_r_over_z = ds_TCs.r_over_z[module_idx][:n_TCs+1][ak.argsort(mod_phi)]
         mod_phi = ak.sort(mod_phi)       
 
         for tc_idx, TC_xml in enumerate(xml_alloc):
@@ -107,29 +102,22 @@ def process_event(ds_event):
             if n_link not in data_TCs[TC_xml['frame']].keys():
                 data_TCs[TC_xml['frame']][n_link] = [[0]*3]*3
 
-            if plotting: heatmap_python[int((compress_value(int(mod_r_over_z[tc_idx]/LSB_r_z))[0]-440)/64)-1, 
-                         int(124*mod_phi[tc_idx]/3.14)-1] += compress_value(int(mod_energy[tc_idx]/LSB))[0]
-            
+            value_energy, code_energy = compress_value(mod_energy[tc_idx]/LSB)
+            value_r_z, code_r_z = compress_value(mod_r_over_z[tc_idx]/LSB_r_z)
+            value_phi, code_phi = compress_value(mod_phi[tc_idx]/LSB_phi)
+
+            if args.col: heatmap[plot.define_bin(value_r_z)[0], columns[tc_idx]] += value_energy
+            elif args.plot: heatmap[plot.define_bin(value_r_z, (np.pi/1944)*value_phi)] += value_energy
             data_TCs[TC_xml['frame']][n_link][TC_xml['channel']%3] = [
-                compress_value(int(mod_energy[tc_idx]/LSB))[1],
-                compress_value(int(mod_r_over_z[tc_idx]/LSB_r_z))[1],
-                compress_value(int(mod_phi[tc_idx]/LSB_phi))[1]
+                code_energy, code_r_z, code_phi
                 ]
     
-    if plotting:
-      plt.imshow(heatmap_python, cmap='viridis', aspect='auto')
-      plt.colorbar(label='Input Energy')
-      plt.xlabel('Column')
-      plt.ylabel('R/Z Bin')
-      plt.title('Heatmap of Energy, python')
-      plt.savefig('plots/heatmap_energy_python.pdf') 
-      plt.clf()
+    title = 'columns_pre_unpacking' if args.col else 'pre_unpacking'
+    if args.plot: plot.create_heatmap(heatmap, title, ds_gen.event)
     return data_TCs
     
-def data_packer(ds):
-    print('Processing event..', ds[1].event[0], \
-          '(eta, phi) =', ds[1].good_genpart_exeta[0][0], ds[1].good_genpart_exphi[0][0])
-    data_TCs = process_event(ds[0][0])
+def data_packer(ds_TCs, ds_gen, args):
+    data_TCs = process_event(ds_TCs, ds_gen, args)
 
     # packing data in links 
     data_links = {}

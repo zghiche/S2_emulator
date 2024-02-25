@@ -1,10 +1,10 @@
 import os
 import argparse
-import numpy as np
-import matplotlib.pyplot as plt
 import yaml
-import Toolkit as tool
 import cppyy
+
+import Toolkit as tool
+import data_handle.plot_tools as plot
 
 cppyy.add_include_path(os.path.abspath(''))
 
@@ -31,29 +31,7 @@ def LinksInData(data_packed):
     
     return LinksInData
 
-def create_plot(objects, step):
-    heatmap_data = np.zeros((64, 124)) 
-   
-    for object in objects:
-      if (step==0) and (object.energy()>0): 
-         heatmap_data[int((object.rOverZ()-440)/64)-1, int(124/1944*object.phi())-1] += (object.energy())/100
-         print("Energy : ", object.energy(), "Phi", object.phi(), "R/Z", int((object.rOverZ()-440)/64), "Column", object.index())
-      
-      if (step==1) and (object.S()>0):
-         heatmap_data[object.sortKey()-1, object.index()-1] += (object.S())/100
-         print("Smeared Energy : ", object.S(), "R/Z bin", object.sortKey(), "col", object.index())
-    
-    title = 'Unpacked Energy' if step==0 else 'Smeared Energy'
-    plt.imshow(heatmap_data, cmap='viridis', aspect='auto')
-    plt.xlabel('Column')
-    plt.ylabel('R/Z Bin')
-    plt.title('Heatmap ' + title)
-    plt.colorbar(label = title)
-    plt.savefig('plots/'+title.replace(' ', '_')+'.pdf')
-    plt.clf()
-
-
-def run_algorithm(config, data_links):
+def run_algorithm(config, data_links, args, event):
     ''' Calling the emulator algorithm in all its steps '''
 
     linkUnpacking_ = l1thgcfirmware.HGCalLinkUnpacking(config)
@@ -62,22 +40,20 @@ def run_algorithm(config, data_links):
 
     unpackedTCs = l1thgcfirmware.HGCalTriggerCellSAPtrCollection()
     linkUnpacking_.runLinkUnpacking(data_links, unpackedTCs);
-    # create_plot(unpackedTCs, 0)
+    if args.plot: plot.create_plot(unpackedTCs, 'post_unpacking', event, args.col)
 
     histogram = l1thgcfirmware.HGCalHistogramCellSAPtrCollection()
     seeding_.runSeeding(unpackedTCs, histogram)
-    # create_plot(histogram, 1)
+    # if args.plot: tool.create_plot(histogram, 'post_seeding', event)
 
     # clusters = l1thgcfirmware.HGCalClusterSAPtrCollection()
     # clustering_.runClustering(unpackedTCs, histogram, clusters)
 
-    # print(clusters)
-    # for cluster in clusters:
-    # print('ciao')
-
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Stage-2 Emulator Parameters')
-    parser.add_argument('-n', type=int, help='Provide the number of events')
+    parser.add_argument('-n', type=int, default=1, help='Provide the number of events')
+    parser.add_argument('--plot', action='store_true', help='Create plots for each event')
+    parser.add_argument('--col',  action='store_true', help='Create plots using column numbers')
     args = parser.parse_args()
 
     tool.define_map(params)
@@ -85,6 +61,11 @@ if __name__ == '__main__':
     # config.printConfiguration()
 
     ds = tool.provide_events(args.n)
-    for event in ds:
-      data_links = LinksInData(tool.data_packer(event))
-      run_algorithm(config, data_links)
+    for ds_event in ds:
+      ds_TCs, ds_gen = ds_event[0], ds_event[1]
+      print('Processing event {}. (\u03B7, \u03C6) = {:.2f}, {:.2f}'.format(ds_gen.event,
+            round(ds_gen.good_genpart_exeta[0], 2), round(ds_gen.good_genpart_exphi[0], 2)))
+
+      data_links = LinksInData(tool.data_packer(ds_TCs, ds_gen, args))
+      run_algorithm(config, data_links, args, ds_gen.event)
+
