@@ -95,13 +95,13 @@ namespace l1thgcfirmware {
     unsigned int kernelWidth( unsigned int iBin ) const { return kernelWidths_.at(iBin); }
     unsigned int areaNormalization( unsigned int iBin ) const { return areaNormalizations_.at(iBin); }
     
-    void setROverZRange( const float rOverZRange ) { rOverZRange_ = rOverZRange_; }
+    void setROverZRange( const float rOverZRange ) { rOverZRange_ = rOverZRange; }
     unsigned int rOverZRange() const { return rOverZRange_; }
-    void setROverZNValues( const float rOverZNValues ) { rOverZNValues_ = rOverZNValues_; }
+    void setROverZNValues( const float rOverZNValues ) { rOverZNValues_ = rOverZNValues; }
     unsigned int rOverZNValues() const { return rOverZNValues_; }
-    void setPhiRange( const float phiRange ) { phiRange_ = phiRange_; }
+    void setPhiRange( const float phiRange ) { phiRange_ = phiRange; }
     unsigned int phiRange() const { return phiRange_; }
-    void setPhiNValues( const float phiNValues ) { phiNValues_ = phiNValues_; }
+    void setPhiNValues( const float phiNValues ) { phiNValues_ = phiNValues; }
     unsigned int phiNValues() const { return phiNValues_; }
     void setPtDigiFactor(const float ptDigiFactor) { ptDigiFactor_ = ptDigiFactor; }
     float ptDigiFactor() const { return ptDigiFactor_; }

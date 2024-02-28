@@ -4,35 +4,34 @@ import uproot
 import xml.etree.ElementTree as ET
 from collections import defaultdict
 
-def read_geometry_txt():
-    ''' reads the geometry file from Pedro's txt '''
-    
-    geometry_file = '../../mapping/FE_mapping/geometries/v15.3/geometry.hgcal.txt'
-    return np.loadtxt(geometry_file, delimiter=' ', usecols=(0,1,2,37), skiprows=1) #'plane','u','v','hash'
+# def read_geometry_txt():
+#     ''' reads the geometry file from Pedro's txt '''
+#     
+#     geometry_file = '../../mapping/FE_mapping/geometries/v15.3/geometry.hgcal.txt'
+#     return np.loadtxt(geometry_file, delimiter=' ', usecols=(0,1,2,37), skiprows=1) #'plane','u','v','hash'
 
 def read_xml():
-    tree = ET.parse('config_files/S1toChannels.SeparateTD.120.MixedTypes.NoSplit.xml')
+    tree = ET.parse('config_files/S1.ChannelAllocation.xml')
     root = tree.getroot()
+    reversed_data = defaultdict(list)
 
-    reversed_data = defaultdict(list)#lambda: defaultdict(list))
-
+    S1_index = 0
     for s1_element in root.findall('.//S1'):
-        s1_id = s1_element.get('id')
         for channel_element in s1_element.findall('.//Channel'):
-            channel = int(channel_element.get('id'))
+            channel = int(channel_element.get('aux-id'))
             for frame_element in channel_element.findall('.//Frame'):
                 if all(attr in frame_element.attrib for attr in ['id', 'column', 'Module']):
                     frame  = int(frame_element.get('id'))
                     column = int(frame_element.get('column'))
-                    module = int(frame_element.get('Module'))
-                    glb_channel = 12*int(s1_id[1:])+channel
+                    module = hex(int(frame_element.get('Module'),16))
+                    glb_channel = 12*S1_index+channel
                     index  = int(frame_element.get('index'))
                     reversed_data[module].append({'column'     : column,
                                                   'frame'      : frame, 
                                                   'channel'    : channel, 
                                                   'glb_channel': glb_channel,
                                                   'index'      : index})
-
+        S1_index += 1
     return reversed_data
 
 def apply_sort(df, counts, axis):
@@ -72,18 +71,27 @@ def provide_event(tree, event):
     
 def provide_events(n=1):
     filepath = '/data_CMS/cms/ehle/L1HGCAL/PU0/photons/skims/skim_tightTC_dRxy_hadd.root' 
-    # filepath = '../../building_ROI/skim_small_photons_0PU_bc_stc_hadd.root'
     name_tree = "FloatingpointMixedbcstcrealsig4DummyHistomaxxydr015GenmatchGenclustersntuple/HGCalTriggerNtuple"
 
     tree  = uproot.open(filepath)[name_tree]
     event, events = 0, []
     for n_ev in range(n):
-      phi_gen = -1
-      while not 0 < phi_gen < 1.80:
-        event += 1
-        phi_gen = tree.arrays(['event','good_genpart_exphi'], entry_start=event,
-                             entry_stop=event+1, library='ak').good_genpart_exphi
-      events.append(event)
+        phi_gen, eta_gen = -1, -1
+        event_found = False
+    
+        while not 0.2 < phi_gen < 1.8 or not 1.6 < eta_gen < 2.8:
+            event += 1
+            tree_ev = tree.arrays(['event', 'good_genpart_exphi', 'good_genpart_exeta'], entry_start=event,
+                                  entry_stop=event+1, library='ak')
+            
+            phi_gen, eta_gen = tree_ev.good_genpart_exphi[0], tree_ev.good_genpart_exeta[0]
+    
+            if 0.2 < phi_gen < 1.8 and 1.6 < eta_gen < 2.8:
+                event_found = True
+                break
+    
+        if event_found:
+            events.append(event)
 
     events_ds = [provide_event(tree, ev) for ev in events]
     return events_ds

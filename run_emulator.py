@@ -5,7 +5,7 @@ import cppyy
 
 import Toolkit as tool
 import data_handle.plot_tools as plot
-
+import matplotlib.pyplot as plt
 cppyy.add_include_path(os.path.abspath(''))
 
 cppyy.load_library('lib_configuration.so')
@@ -31,7 +31,7 @@ def LinksInData(data_packed):
     
     return LinksInData
 
-def run_algorithm(config, data_links, args, event):
+def run_algorithm(config, data_links, args, gen, shift):
     ''' Calling the emulator algorithm in all its steps '''
 
     linkUnpacking_ = l1thgcfirmware.HGCalLinkUnpacking(config)
@@ -40,11 +40,10 @@ def run_algorithm(config, data_links, args, event):
 
     unpackedTCs = l1thgcfirmware.HGCalTriggerCellSAPtrCollection()
     linkUnpacking_.runLinkUnpacking(data_links, unpackedTCs);
-    if args.plot: plot.create_plot(unpackedTCs, 'post_unpacking', event, args.col)
+    if args.plot: shift.append(plot.create_plot(unpackedTCs, 'post_unpacking', gen, args))
 
     histogram = l1thgcfirmware.HGCalHistogramCellSAPtrCollection()
     seeding_.runSeeding(unpackedTCs, histogram)
-    # if args.plot: tool.create_plot(histogram, 'post_seeding', event)
 
     # clusters = l1thgcfirmware.HGCalClusterSAPtrCollection()
     # clustering_.runClustering(unpackedTCs, histogram, clusters)
@@ -54,18 +53,27 @@ if __name__ == '__main__':
     parser.add_argument('-n', type=int, default=1, help='Provide the number of events')
     parser.add_argument('--plot', action='store_true', help='Create plots for each event')
     parser.add_argument('--col',  action='store_true', help='Create plots using column numbers')
+    parser.add_argument('--performance', action='store_true', help='Create plots using column numbers')
     args = parser.parse_args()
 
     tool.define_map(params)
     config = l1thgcfirmware.ClusterAlgoConfig(**params)
     # config.printConfiguration()
 
+    shift_pre, shift_post = [], []
     ds = tool.provide_events(args.n)
     for ds_event in ds:
       ds_TCs, ds_gen = ds_event[0], ds_event[1]
       print('Processing event {}. (\u03B7, \u03C6) = {:.2f}, {:.2f}'.format(ds_gen.event,
             round(ds_gen.good_genpart_exeta[0], 2), round(ds_gen.good_genpart_exphi[0], 2)))
 
-      data_links = LinksInData(tool.data_packer(ds_TCs, ds_gen, args))
-      run_algorithm(config, data_links, args, ds_gen.event)
+      data_packed = tool.data_packer(ds_TCs, ds_gen, args, shift_pre)
+      data_links  = LinksInData(data_packed)
+      
+      run_algorithm(config, data_links, args, ds_gen, shift_post)
 
+    if args.performance:
+      plot.create_histo([phi[1] for phi in shift_pre], 'phi', 'pre_unpacking')
+      plot.create_histo([r_z[0] for r_z in shift_pre], 'r_z', 'pre_unpacking')
+      plot.create_histo([phi[1] for phi in shift_post],'phi', 'post_unpacking')
+      plot.create_histo([r_z[0] for r_z in shift_post],'r_z', 'post_unpacking')

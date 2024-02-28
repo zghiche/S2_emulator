@@ -33,9 +33,9 @@ void HGCalLinkUnpacking::unpackLinks( const HGCalLinkTriggerCellSAPtrCollection&
           tc->index_ = (3*k)+l;
           tc->data_ = val & 0x7FFF;
           val >>= 15;
-          tc->r_over_z_ = r_over_z & 0x7FFF;
+          tc->r_over_z_ = r_over_z & 0xFFF;
           r_over_z >>= 15;
-          tc->phi_ = phi & 0x7FFF;
+          tc->phi_ = phi & 0xFFF;
           phi >>= 15;
           tc->lastFrame_ = in->lastFrame_ and j==1;
           tc->dataValid_ = true;
@@ -75,7 +75,7 @@ HGCalTriggerCellSAPtrCollection HGCalLinkUnpacking::triggerCellDistribution( con
             (frame==Nframes-1),
             true,
             in->r_over_z_.value_,
-            in->phi_.value_,
+            in->phi_.value_, 
             Layer,
             in->data_.value_
           )
@@ -104,16 +104,6 @@ void HGCalLinkUnpacking::unpackTriggerCells(HGCalTriggerCellSAPtrCollection& tri
     uint32_t energyExponent = tc->energy() & 0xF;
     tc->setEnergy(((1ULL << mantissaBits_) | energyMantissa) << (energyExponent - 1));
     
-    // Phi
-    uint32_t phiMantissa = (tc->phi() >> 4) & 0x7;
-    uint32_t phiExponent = tc->phi() & 0xF;
-    tc->setPhi(((1ULL << mantissaBits_) | phiMantissa) << (phiExponent - 1));
-     
-    // R_over_Z
-    uint32_t rOverZMantissa = (tc->rOverZ() >> 4) & 0x7;
-    uint32_t rOverZExponent = tc->rOverZ() & 0xF;
-    tc->setROverZ(((1ULL << mantissaBits_) | rOverZMantissa) << (rOverZExponent - 1));
-
     tc->addLatency( stepLatency );
   }
 }

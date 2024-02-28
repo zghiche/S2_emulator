@@ -4,7 +4,7 @@ import math
 import numpy as np
 import awkward as ak
 
-from data_handle.geometry import provide_events, read_geometry_txt, read_xml
+from data_handle.geometry import provide_events, read_xml
 import data_handle.plot_tools as plot 
 
 def compress_value(value, exponent_bits=4, mantissa_bits=3, truncation_bits=0):
@@ -45,17 +45,17 @@ def define_map(params):
 
     params['stepLatency'] = map_custom
 
-def get_module_hash(conversion, plane, u, v):
-    # CMSSW to our u v convention u'=v-u, v'=v
-    filtered_rows = conversion[(conversion[:, 0] == plane) & 
-                               (conversion[:, 1] == v-u) &
-                               (conversion[:, 2] == v)][0]
-    if not filtered_rows.all():
-        print('Module not found:', plane, v-u, v, 'CMSSW coord: ', plane, u, v)
-    else: 
-        print('Analysing module ', plane, v-u, v)
-        return int(filtered_rows[3])
+def ObjectType( object_type ):
+    return ( ( object_type & 0xF ) << 22 )
 
+def get_module_id(plane, u, v):
+    # CMSSW to our u v convention u'=v-u, v'=v
+    print('Analysing module ', plane, v-u, v)
+    if plane & ~0x3F : raise Exception( "Invalid plane" )
+    if v-u & ~0xF : raise Exception( "Invalid u" )
+    if v   & ~0xF : raise Exception( "Invalid v" )
+    return hex(0x60000000 | ObjectType(0) | ((plane & 0x3F) << 16) | ((v-u & 0xF) << 12) | ((v & 0xF) << 8))
+ 
 def get_TC_allocation(xml_data, module):
     return xml_data[module]
 
@@ -65,21 +65,19 @@ def create_link(data_in):
     phi      = (data_in[2][2] << 30) | (data_in[1][2] << 15) | (data_in[0][2])
     return [energy, r_over_z, phi]
 
-def process_event(ds_TCs, ds_gen, args):
-    xml_data = read_xml()
-    geometry = read_geometry_txt()
-
+def process_event(ds_TCs, ds_gen, args, shift):
     LSB = 1/100000 # 10 keV
-    LSB_phi = np.pi/1944
     LSB_r_z = 0.7/4096
+    LSB_phi = np.pi/1944
+    offset_phi = -0.3
     data_TCs = {}
+    xml_data = read_xml()
    
-    if args.plot: heatmap = np.zeros((64, 124))
+    if args.plot: data_heatmap = []
     for module_idx in range(len(ds_TCs.good_tc_x)):
-        module = get_module_hash(geometry,
-                                 ds_TCs.good_tc_layer[module_idx][0],
-                                 ds_TCs.good_tc_waferu[module_idx][0],
-                                 ds_TCs.good_tc_waferv[module_idx][0])
+        module = get_module_id(ds_TCs.good_tc_layer[module_idx][0],
+                               ds_TCs.good_tc_waferu[module_idx][0],
+                               ds_TCs.good_tc_waferv[module_idx][0])
         if not module: continue
         xml_alloc = get_TC_allocation(xml_data, module)
 
@@ -103,21 +101,26 @@ def process_event(ds_TCs, ds_gen, args):
                 data_TCs[TC_xml['frame']][n_link] = [[0]*3]*3
 
             value_energy, code_energy = compress_value(mod_energy[tc_idx]/LSB)
-            value_r_z, code_r_z = compress_value(mod_r_over_z[tc_idx]/LSB_r_z)
-            value_phi, code_phi = compress_value(mod_phi[tc_idx]/LSB_phi)
+            value_r_z = int(mod_r_over_z[tc_idx]/LSB_r_z) & 0xFFF # 12 bits
+            value_phi = int((mod_phi[tc_idx]-offset_phi)/LSB_phi) & 0xFFF # 12 bits
 
-            if args.col: heatmap[plot.define_bin(value_r_z)[0], columns[tc_idx]] += value_energy
-            elif args.plot: heatmap[plot.define_bin(value_r_z, (np.pi/1944)*value_phi)] += value_energy
+            if args.plot:
+                data_heatmap.append({
+                    'rOverZ': value_r_z,
+                    'phi'   : value_phi,
+                    'column': columns[tc_idx],
+                    'energy': value_energy
+                })
+
             data_TCs[TC_xml['frame']][n_link][TC_xml['channel']%3] = [
-                code_energy, code_r_z, code_phi
+                code_energy, value_r_z, value_phi
                 ]
-    
-    title = 'columns_pre_unpacking' if args.col else 'pre_unpacking'
-    if args.plot: plot.create_heatmap(heatmap, title, ds_gen.event)
+   
+    if args.plot: shift.append(plot.create_plot_py(data_heatmap, ds_gen, args))
     return data_TCs
     
-def data_packer(ds_TCs, ds_gen, args):
-    data_TCs = process_event(ds_TCs, ds_gen, args)
+def data_packer(ds_TCs, ds_gen, args, shift):
+    data_TCs = process_event(ds_TCs, ds_gen, args, shift)
 
     # packing data in links 
     data_links = {}
