@@ -39,6 +39,7 @@ void HGCalHistoClustering::clusterizer( HGCalTriggerCellSAPtrCollection& trigger
   // Map the maxima into the FIFO
   for( auto& i : histogram ){
     if( i->maximaOffset_>0 or i->left_ or i->right_ ) lColumns.at( i->index_ ).MaximaFifo.push_back( i );      
+    if( i->maximaOffset_>0 ) std::cout << "Max found. R/Z: " << i->sortKey_ << " Column " << i->index_ << std::endl; 
   }
   histogram.clear();
 
@@ -55,7 +56,7 @@ void HGCalHistoClustering::clusterizer( HGCalTriggerCellSAPtrCollection& trigger
       auto& tc = col.MappedTCs.at( frame );
       
                                                         
-      // Get the maxima from the FIFO                                                //  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< STILL TRYING TO EMULATE HOW THE FIRMWARE DOES THIS!
+      // Get the maxima from the FIFO  //  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< STILL TRYING TO EMULATE HOW THE FIRMWARE DOES THIS!
       if( col.counter < 0 )
       {
         auto MaximaInFifo = ( ( col.MaximaFifo.size() ) and ( col.MaximaFifo.front()->clock_-306 < frame ) );
@@ -72,10 +73,11 @@ void HGCalHistoClustering::clusterizer( HGCalTriggerCellSAPtrCollection& trigger
 
       if ( col.Current != nullptr )
       {
-        // std::cout << *col.Current;        
+        // std::cout << col.Current; 
         maximaFifoOut.push_back( std::make_unique< HGCalHistogramCell >( *col.Current ) );
         auto& hcx = maximaFifoOut.back();
-        hcx->clock_ = frame + 289 + 16;     
+        hcx->clock_ = frame + 289 + 16;
+        std::cout << "Max found. R/Z: " << hcx->sortKey_ << " Column " << hcx->index_ << std::endl;
       }
     
       // Compare the TC against the maxima
@@ -86,17 +88,18 @@ void HGCalHistoClustering::clusterizer( HGCalTriggerCellSAPtrCollection& trigger
       tcx->setClock( frame + 289 + 20 );
       tcx->setLastFrame( false ); //(frame==215);
 
+      // std::cout << col.Current->S_ << std::endl;
       // unsigned int CurrentdR2Cut(5000); // Magic numbers
       // unsigned int CurrentDist = Dist( tc , col.Current , config_ );
       // if( CurrentDist < CurrentdR2Cut )
       // {
-        // HGCalHistogramCellSAPtr hc = std::make_shared< HGCalHistogramCell > ( *col.Current );
-        // hc->clock_ = frame + 289 + 20;    
-        // histogramOut.emplace_back( hc );        
+      //   HGCalHistogramCellSAPtr hc = std::make_shared< HGCalHistogramCell > ( *col.Current );
+      //   hc->clock_ = frame + 289 + 20;    
+      //   histogramOut.emplace_back( hc );        
 
-        // tc->clock_ = frame + 289 + 20; 
-        // tc->sortKey_ = hc->sortKey_;        
-        // triggerCellsOut.push_back( tc );
+      //   tc->clock_ = frame + 289 + 20; 
+      //   tc->sortKey_ = hc->sortKey_;        
+      //   triggerCellsOut.push_back( tc );
       // }
 
       

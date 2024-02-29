@@ -11,7 +11,6 @@ def calculate_shift(heatmap, gen):
     max_bin = np.unravel_index(np.argmax(heatmap), heatmap.shape)
     max_r_z, max_phi = bin2coord(max_bin[0]+0.5, max_bin[1]+0.5)
     r_over_z = np.tan(2*np.arctan(np.exp(-gen.good_genpart_exeta[0])))
-    print(max_r_z, max_phi)
     return [x - y for x, y in zip([r_over_z, gen.good_genpart_exphi[0]], 
                                        [max_r_z*0.7/4096, max_phi-0.3])]
 
@@ -27,7 +26,6 @@ def create_plot_py(objects, gen, args):
     create_heatmap(heatmap, step, gen.event)
 
 def create_plot(objects, step, gen, args):
-    if len(objects) <= 1: print(f"No TCs found for event {gen.event}"); return [0,0]
     heatmap = np.zeros((64, 124))
 
     for bin in objects:
