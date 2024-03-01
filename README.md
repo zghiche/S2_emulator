@@ -5,9 +5,11 @@ It is possible to use a configuration file (`config.yaml`) and easily change the
 
 To create the binding between Python and C++ code, a special library has been used: [cppyy](https://cppyy.readthedocs.io/en/latest/). Some short example about how import C++ libraries, how to call class into Python, etc are reported in [this](https://github.com/mchiusi/python-bindings/tree/main) repository on my profile.
 
-For the moment, there is no `Makefile` to compile the code. The command that should be used is the following. The shared library has to be inserted in the python file `run_configuration.py`.
+For the moment, there is no `Makefile` to compile the code. The command that should be used is the following. The shared library has to be inserted in the python file `run_emulator.py`.
 ```
-g++ -std=c++14 -shared -o lib_configuration.so L1Trigger/L1THGCal/src/backend_emulator/*.cc -fPIC -I.
+g++ -std=c++14 -shared -o lib_configuration.so L1Trigger/L1THGCal/src/backend_emulator/*.cc -g -fPIC -I.
 ```
 
-In the main python file `run_configuration.py` dummy data are prepared and injected. Currently I'm studying the back-end mapping (TC to S1, S2 links and frames) to understand how the data has to be prepared starting from a simple simulated dataset. XML files [here](https://gitlab.cern.ch/hgcal-tpg/mapping/-/tree/master).
+In the main python file `run_emulator.py` and in `data_handle/event.py` dummy data are prepared and injected. 
+
+Currently I'm studying the back-end mapping (TC to S1, S2 links and frames) to understand how the data has to be prepared starting from a simple simulated dataset. XML files [here](https://gitlab.cern.ch/hgcal-tpg/mapping/-/tree/master) and copied in the `config_files` directory. The geometry is read from the XML file in `data_handle/geometry.py`.
