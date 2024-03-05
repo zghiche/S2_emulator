@@ -29,10 +29,10 @@ class EventData():
     
     def get_module_id(self, plane, u, v):
         # CMSSW to our u v convention u'=v-u, v'=v
-        print('Analysing module ', plane, v-u, v)
+        # print('Analysing module ', plane, v-u, v)
         if plane & ~0x3F : raise Exception( "Invalid plane" )
         if v-u & ~0xF : raise Exception( "Invalid u" )
-        if v   & ~0xF : raise Exception( "Invalid v" )
+        if v   & ~0xF : return 0 # raise Exception( "Invalid v" )
         return hex(0x60000000 | self.ObjectType(0) | ((plane & 0x3F) << 16) | ((v-u & 0xF) << 12) | ((v & 0xF) << 8))
     
     def get_TC_allocation(self, xml_data, module):
@@ -46,13 +46,13 @@ class EventData():
    
      
     def _process_event(self, args, shift):
-        LSB = 1/100000 # 10 keV
+        LSB = 1/10000 # 100 keV
         LSB_r_z = 0.7/4096
         LSB_phi = np.pi/1944
         offset_phi = -0.3
         data_TCs = {}
         xml_data = geometry.read_xml()
-    
+
         if args.plot: data_heatmap = []
         for module_idx in range(len(self.ds_TCs.good_tc_x)):
             module = self.get_module_id(self.ds_TCs.good_tc_layer[module_idx][0],
@@ -67,10 +67,10 @@ class EventData():
     
             # simulating the BC algorithm (ECON-T) and the phi sorting in the S1 FPGA
             mod_phi = self.ds_TCs.good_tc_phi[module_idx][:n_TCs+1]
-            mod_energy = self.ds_TCs.good_tc_mipPt[module_idx][:n_TCs+1][ak.argsort(mod_phi)]
+            mod_energy = self.ds_TCs.good_tc_pt[module_idx][:n_TCs+1][ak.argsort(mod_phi)]
             mod_r_over_z = self.ds_TCs.r_over_z[module_idx][:n_TCs+1][ak.argsort(mod_phi)]
             mod_phi = ak.sort(mod_phi)
-    
+   
             for tc_idx, TC_xml in enumerate(xml_alloc):
                 if tc_idx > len(mod_energy)-1: break
                 n_link = math.floor(TC_xml['glb_channel']/3)
@@ -83,7 +83,7 @@ class EventData():
                 value_energy, code_energy = compress_value(mod_energy[tc_idx]/LSB)
                 value_r_z = int(mod_r_over_z[tc_idx]/LSB_r_z) & 0xFFF # 12 bits
                 value_phi = int((mod_phi[tc_idx]-offset_phi)/LSB_phi) & 0xFFF # 12 bits
-    
+   
                 if args.plot:
                     data_heatmap.append({
                         'rOverZ': value_r_z,
@@ -96,7 +96,7 @@ class EventData():
                     code_energy, value_r_z, value_phi
                     ]
     
-        if args.plot: shift.append(plot.create_plot_py(data_heatmap, self.gen, args))
+        if args.plot: shift.append(plot.create_plot_py(data_heatmap, self, args))
         return data_TCs
     
     def _data_packer(self, args, shift):
@@ -138,7 +138,7 @@ def provide_event(tree, event):
         'good_tc_x', 'good_tc_y', 'good_tc_z',
         'good_tc_phi', 'good_tc_layer',
         'good_tc_waferu', 'good_tc_waferv',
-        'good_tc_energy', 'good_tc_mipPt'
+        'good_tc_energy', 'good_tc_pt'
     ]
 
     branches_gen = [
@@ -160,7 +160,7 @@ def provide_event(tree, event):
     sorted_df = ak.flatten(sorted_df, axis=2)
 
     # sorting by transverse energy, simulating the ECONT_T
-    sorted_df = sorted_df[ak.argsort(sorted_df['good_tc_mipPt'], ascending=False)][0]
+    sorted_df = sorted_df[ak.argsort(sorted_df['good_tc_pt'], ascending=False)][0]
     return EventData(sorted_df, data_gen)
 
 def provide_events(n=1):

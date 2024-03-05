@@ -20,7 +20,7 @@ def run_algorithm(config, event, args, shift):
 
     unpackedTCs = l1thgcfirmware.HGCalTriggerCellSAPtrCollection()
     linkUnpacking_.runLinkUnpacking(event.data_packer, unpackedTCs);
-    if args.plot: shift.append(plot.create_plot(unpackedTCs, 'post_unpacking', event.gen, args))
+    if args.plot: shift.append(plot.create_plot(unpackedTCs, 'post_unpacking', event, args))
 
     histogram = l1thgcfirmware.HGCalHistogramCellSAPtrCollection()
     seeding_.runSeeding(unpackedTCs, histogram)
@@ -44,15 +44,13 @@ if __name__ == '__main__':
 
     shift_pre, shift_post = [], []
     events = provide_events(args.n)
-    for event in events:
+    for idx, event in enumerate(events):
+      if idx % 50 == 0: print('Processing event', idx)
       print('Processing event {}. (\u03B7, \u03C6) = {:.2f}, {:.2f}. pT = {:.2f} GeV'.format(
             event.event, event.eta_gen, event.phi_gen, event.pT_gen))
 
+      # if (event.event != 12757): continue # | (event.event != 12507): continue
       event._data_packer(args, shift_pre)
       run_algorithm(config, event, args, shift_post)
 
-    if args.performance:
-      plot.create_histo([phi[1] for phi in shift_pre], 'phi', 'pre_unpacking')
-      plot.create_histo([r_z[0] for r_z in shift_pre], 'r_z', 'pre_unpacking')
-      plot.create_histo([phi[1] for phi in shift_post],'phi', 'post_unpacking')
-      plot.create_histo([r_z[0] for r_z in shift_post],'r_z', 'post_unpacking')
+    if args.performance: plot.produce_plots(shift_pre, shift_post)
