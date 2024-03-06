@@ -95,7 +95,7 @@ class EventData():
                 data_TCs[TC_xml['frame']][n_link][TC_xml['channel']%3] = [
                     code_energy, value_r_z, value_phi
                     ]
-    
+   
         if args.plot: shift.append(plot.create_plot_py(data_heatmap, self, args))
         return data_TCs
     
@@ -149,6 +149,10 @@ def provide_event(tree, event):
     data_gen = tree.arrays(branches_gen, entry_start=event, entry_stop=event+1, library='ak')[0]
     data['r_over_z'] = np.sqrt(data.good_tc_x**2 + data.good_tc_y**2)/data.good_tc_z
 
+    # df = ak.to_dataframe(tree.arrays(branches_tc, entry_start=event, entry_stop=event+1))
+    # print(df.sort_values(["good_tc_waferu", 'good_tc_waferv', 'good_tc_layer']).to_string())
+    # print(len(ak.to_dataframe(tree.arrays(branches_tc, entry_start=event, entry_stop=event+1)).drop_duplicates(subset=["good_tc_waferu", 'good_tc_waferv', 'good_tc_layer'])))
+    
     # sorting by modules  
     sorted_waferu = data[ak.argsort(data['good_tc_waferu'])]
     counts = ak.flatten(ak.run_lengths(sorted_waferu.good_tc_waferu), axis=None)
@@ -157,6 +161,11 @@ def provide_event(tree, event):
     sorted_waferv = sorted_df[ak.argsort(sorted_df['good_tc_waferv'])]
     counts = ak.flatten(ak.run_lengths(sorted_waferv.good_tc_waferv), axis=None)
     sorted_df = apply_sort(sorted_waferv, counts, 2)
+
+    sorted_layer = sorted_df[ak.argsort(sorted_df['good_tc_layer'])]
+    counts = ak.flatten(ak.run_lengths(sorted_layer.good_tc_layer), axis=None)
+    sorted_df = apply_sort(sorted_layer, counts, 3)
+    sorted_df = ak.flatten(sorted_df, axis=3)
     sorted_df = ak.flatten(sorted_df, axis=2)
 
     # sorting by transverse energy, simulating the ECONT_T

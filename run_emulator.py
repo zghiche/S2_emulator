@@ -22,8 +22,8 @@ def run_algorithm(config, event, args, shift):
     linkUnpacking_.runLinkUnpacking(event.data_packer, unpackedTCs);
     if args.plot: shift.append(plot.create_plot(unpackedTCs, 'post_unpacking', event, args))
 
-    histogram = l1thgcfirmware.HGCalHistogramCellSAPtrCollection()
-    seeding_.runSeeding(unpackedTCs, histogram)
+    # histogram = l1thgcfirmware.HGCalHistogramCellSAPtrCollection()
+    # seeding_.runSeeding(unpackedTCs, histogram)
 
     # clusters = l1thgcfirmware.HGCalClusterSAPtrCollection()
     # clustering_.runClustering(unpackedTCs, histogram, clusters)
@@ -49,7 +49,6 @@ if __name__ == '__main__':
       print('Processing event {}. (\u03B7, \u03C6) = {:.2f}, {:.2f}. pT = {:.2f} GeV'.format(
             event.event, event.eta_gen, event.phi_gen, event.pT_gen))
 
-      # if (event.event != 12757): continue # | (event.event != 12507): continue
       event._data_packer(args, shift_pre)
       run_algorithm(config, event, args, shift_post)
 

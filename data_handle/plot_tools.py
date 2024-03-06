@@ -64,12 +64,9 @@ def create_heatmap(heatmap, title, event_number):
     plt.clf()
 
 def create_histo(data, variable, title):
-    # plt.hist(np.clip(data, 0, 2.3), bins=30, range=(0, 2.3), alpha=0.5) if variable == 'p_t' \
-    # else plt.hist(data, range=(-0.1, 0.1), bins=30, alpha=0.5)
     plt.hist(np.clip(data, 0, 2.2), bins=20, alpha=0.5) if variable == 'p_t' else \
-    plt.hist(np.clip(data, -0.04, 0.04), bins=20, range=(-0.04, 0.04), alpha=0.5) if variable == 'r_z' else \
-    plt.hist(np.clip(data, -0.24, 0.24), bins=20, range=(-0.24, 0.24), alpha=0.5)
-    # plt.hist(data, bins=np.linspace(min(data), max(data)), alpha=0.5)
+    plt.hist(np.clip(data, -0.01, 0.01), bins=20, range=(-0.01, 0.01), alpha=0.5) if variable == 'r_z' else \
+    plt.hist(np.clip(data, -0.05, 0.05), bins=20, range=(-0.05, 0.05), alpha=0.5)
     xlabel = (r'$\phi_{bin}^{max energy} - \phi_{gen particle}$' if variable == 'phi' else
           r'$\frac{r}{z}_{bin}^{max energy} - \frac{r}{z}_{gen particle}$' if variable == 'r_z' else
           r'$p^{T}_{bin} / p^{T}_{gen particle}$')
