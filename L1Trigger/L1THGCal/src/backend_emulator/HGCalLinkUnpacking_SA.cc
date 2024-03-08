@@ -31,7 +31,7 @@ void HGCalLinkUnpacking::unpackLinks( const HGCalLinkTriggerCellSAPtrCollection&
           auto tc = make_unique< HGCalLinkTriggerCell >();
           tc->clock_ = in->clock_+j + stepLatency;
           tc->index_ = (3*k)+l;
-          tc->data_ = val & 0x7FFF;
+          tc->data_ = val & 0x7F;
           val >>= 15;
           tc->r_over_z_ = r_over_z & 0xFFF;
           r_over_z >>= 15;
@@ -69,6 +69,7 @@ HGCalTriggerCellSAPtrCollection HGCalLinkUnpacking::triggerCellDistribution( con
         int index    = ( lut_out >> 30 ) & 0x1FF;
 
         auto& in = TriggerCellsIn.at( ( Nchannels * frame ) + index );       
+        // if (in->data_.value_ > 0) {std::cout << " " << frame << " " << index << " " << std::endl;}
         if (in->data_.value_ != 0) {
         TriggerCellsOut.emplace_back(
           make_unique< HGCalTriggerCell >( 

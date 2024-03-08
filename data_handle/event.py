@@ -30,8 +30,8 @@ class EventData():
     def get_module_id(self, plane, u, v):
         # CMSSW to our u v convention u'=v-u, v'=v
         # print('Analysing module ', plane, v-u, v)
-        if plane & ~0x3F : raise Exception( "Invalid plane" )
-        if v-u & ~0xF : raise Exception( "Invalid u" )
+        if plane & ~0x3F : return 0 # raise Exception( "Invalid plane" )
+        if v-u & ~0xF : return 0 # raise Exception( "Invalid u" )
         if v   & ~0xF : return 0 # raise Exception( "Invalid v" )
         return hex(0x60000000 | self.ObjectType(0) | ((plane & 0x3F) << 16) | ((v-u & 0xF) << 12) | ((v & 0xF) << 8))
     
