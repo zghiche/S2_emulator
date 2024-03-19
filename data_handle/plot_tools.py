@@ -75,8 +75,8 @@ def create_histo(data, variable, title, data2=None):
     if variable == 'phi': 
         # plt.hist(data, bins=25, range=(-0.05,0.05), alpha=0.5, label='pre unpacking')
         # plt.hist(data2, bins=25, range=(-0.05,0.05), alpha=0.5, label='pre unpacking')
-        plt.hist(data, bins=25, alpha=0.5, label='phi bin')
-        plt.hist(data2, bins=25, alpha=0.5, label='columns')
+        plt.hist(data, bins=25, alpha=0.5, label='columns pre')
+        plt.hist(data2, bins=25, alpha=0.5, label='columns post')
     plt.legend()
     xlabel = (r'$\phi_{bin}^{max energy} - \phi_{gen particle}$' if variable == 'phi' else
           r'$\frac{r}{z}_{bin}^{max energy} - \frac{r}{z}_{gen particle}$' if variable == 'r_z' else

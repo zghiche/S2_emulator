@@ -10,6 +10,7 @@ from cppyy.gbl import l1thgcfirmware
 import data_handle.tools as tool
 import data_handle.plot_tools as plot
 from data_handle.event import provide_events
+import data_handle.geometry as geometry
 
 def run_algorithm(config, event, args, shift):
     ''' Calling the emulator algorithm in all its steps '''
@@ -44,12 +45,13 @@ if __name__ == '__main__':
 
     shift_pre, shift_post = [], []
     events = provide_events(args.n)
+    xml_data = geometry.read_xml()
     for idx, event in enumerate(events):
       if idx % 50 == 0: print('Processing event', idx)
       print('Processing event {}. (\u03B7, \u03C6) = {:.2f}, {:.2f}. pT = {:.2f} GeV'.format(
             event.event, event.eta_gen, event.phi_gen, event.pT_gen))
 
-      event._data_packer(args, shift_pre)
+      event._data_packer(args, xml_data, shift_pre)
       run_algorithm(config, event, args, shift_post)
-
+    
     if args.performance: plot.produce_plots(shift_pre, shift_post)

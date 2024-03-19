@@ -6,7 +6,6 @@ import cppyy
 from cppyy.gbl import l1thgcfirmware, std
 
 import data_handle.plot_tools as plot
-import data_handle.geometry as geometry
 from data_handle.tools import compress_value
 
 class EventData():
@@ -45,20 +44,19 @@ class EventData():
         return [energy, r_over_z, phi]
    
      
-    def _process_event(self, args, shift):
+    def _process_event(self, args, xml, shift):
         LSB = 1/10000 # 100 keV
         LSB_r_z = 0.7/4096
         LSB_phi = np.pi/1944
         offset_phi = -0.3
         data_TCs = {}
-        xml_data = geometry.read_xml()
 
         if args.plot: data_heatmap = []
         for module_idx in range(len(self.ds_TCs.good_tc_x)):
             module = self.get_module_id(self.ds_TCs.good_tc_layer[module_idx][0],
                                         self.ds_TCs.good_tc_waferu[module_idx][0],
                                         self.ds_TCs.good_tc_waferv[module_idx][0])
-            xml_alloc = self.get_TC_allocation(xml_data, module)
+            xml_alloc = self.get_TC_allocation(xml, module)
             if not xml_alloc: continue
     
             # calculating the number of TC that ca be allocated / module
@@ -99,9 +97,9 @@ class EventData():
         if args.plot: shift.append(plot.create_plot_py(data_heatmap, self, args))
         return data_TCs
     
-    def _data_packer(self, args, shift):
-        data_TCs = self._process_event(args, shift)
-    
+    def _data_packer(self, args, xml, shift):
+        data_TCs = self._process_event(args, xml, shift)
+
         # packing data in links 
         data_links = {}
         for frame in data_TCs.keys():
@@ -133,28 +131,11 @@ def apply_sort(df, counts, axis):
         df[field] = ak.unflatten(df[field], counts, axis)
     return df
 
-def provide_event(tree, event):
-    branches_tc = [
-        'good_tc_x', 'good_tc_y', 'good_tc_z',
-        'good_tc_phi', 'good_tc_layer',
-        'good_tc_waferu', 'good_tc_waferv',
-        'good_tc_energy', 'good_tc_pt'
-    ]
+def provide_event(ev, gen):
+    ev['r_over_z'] = np.sqrt(ev.good_tc_x**2 + ev.good_tc_y**2)/ev.good_tc_z
 
-    branches_gen = [
-        'event', 'good_genpart_exeta', 'good_genpart_exphi', 'good_genpart_energy'
-    ]
-
-    data = tree.arrays(branches_tc, entry_start=event, entry_stop=event+1, library='ak')
-    data_gen = tree.arrays(branches_gen, entry_start=event, entry_stop=event+1, library='ak')[0]
-    data['r_over_z'] = np.sqrt(data.good_tc_x**2 + data.good_tc_y**2)/data.good_tc_z
-
-    # df = ak.to_dataframe(tree.arrays(branches_tc, entry_start=event, entry_stop=event+1))
-    # print(df.sort_values(["good_tc_waferu", 'good_tc_waferv', 'good_tc_layer']).to_string())
-    # print(len(ak.to_dataframe(tree.arrays(branches_tc, entry_start=event, entry_stop=event+1)).drop_duplicates(subset=["good_tc_waferu", 'good_tc_waferv', 'good_tc_layer'])))
-    
     # sorting by modules  
-    sorted_waferu = data[ak.argsort(data['good_tc_waferu'])]
+    sorted_waferu = ev[ak.argsort(ev['good_tc_waferu'])]
     counts = ak.flatten(ak.run_lengths(sorted_waferu.good_tc_waferu), axis=None)
     sorted_df = apply_sort(sorted_waferu, counts, 1)
 
@@ -170,31 +151,27 @@ def provide_event(tree, event):
 
     # sorting by transverse energy, simulating the ECONT_T
     sorted_df = sorted_df[ak.argsort(sorted_df['good_tc_pt'], ascending=False)][0]
-    return EventData(sorted_df, data_gen)
+    return EventData(sorted_df, gen)
 
 def provide_events(n=1):
-    filepath = '/data_CMS/cms/ehle/L1HGCAL/PU0/photons/skims/skim_tightTC_dRxy_hadd.root'
+    filepath = '/data_CMS/cms/mchiusi/L1HGCAL/skim_photons_emulator_02to18phi.root'
     name_tree = "FloatingpointMixedbcstcrealsig4DummyHistomaxxydr015GenmatchGenclustersntuple/HGCalTriggerNtuple"
 
+    branches_tc = [
+        'good_tc_x', 'good_tc_y', 'good_tc_z',
+        'good_tc_phi', 'good_tc_layer',
+        'good_tc_waferu', 'good_tc_waferv',
+        'good_tc_energy', 'good_tc_pt'
+    ]
+
+    branches_gen = [
+        'event', 'good_genpart_exeta', 'good_genpart_exphi', 'good_genpart_energy'
+    ]
+
     tree  = uproot.open(filepath)[name_tree]
-    event, events = 0, []
-    for n_ev in range(n):
-        phi_gen, eta_gen = -1, -1
-        event_found = False
-
-        while not 0.2 < phi_gen < 1.8 or not 1.6 < eta_gen < 2.8:
-            event += 1
-            tree_ev = tree.arrays(['event', 'good_genpart_exphi', 'good_genpart_exeta'], entry_start=event,
-                                  entry_stop=event+1, library='ak')
-
-            phi_gen, eta_gen = tree_ev.good_genpart_exphi[0], tree_ev.good_genpart_exeta[0]
-
-            if 0.2 < phi_gen < 1.8 and 1.6 < eta_gen < 2.8:
-                event_found = True
-                break
-
-        if event_found:
-            events.append(event)
-
-    events_ds = [provide_event(tree, ev) for ev in events]
+    events_ds = []
+    for ev in range(n):
+        data = tree.arrays(branches_tc, entry_start=ev, entry_stop=ev+1, library='ak')
+        data_gen = tree.arrays(branches_gen, entry_start=ev, entry_stop=ev+1, library='ak')[0]
+        events_ds.append(provide_event(data, data_gen))
     return events_ds
