@@ -73,7 +73,7 @@ class EventData():
    
             for tc_idx, TC_xml in enumerate(xml_alloc):
                 if tc_idx > len(mod_energy)-1: break
-                n_link = math.floor(TC_xml['glb_channel']/3)
+                n_link = TC_xml['n_link']
     
                 if TC_xml['frame'] not in data_TCs.keys():
                     data_TCs[TC_xml['frame']] = {}

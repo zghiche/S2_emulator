@@ -30,8 +30,8 @@ def calculate_shift(heatmap, ev):
 def create_plot_py(objects, ev, args):
     heatmap = np.zeros((64, 124))
 
-    for bin in objects:
-        if args.col: heatmap[define_bin(bin['rOverZ'])[0], bin['column']] += bin['energy']/10000
+    for bin in objects: # min col = -23 from S2.ChannelAllocation.xml
+        if args.col: heatmap[define_bin(bin['rOverZ'])[0], 23+bin['column']] += bin['energy']/10000
         else: heatmap[define_bin(bin['rOverZ'], (np.pi/1944)*bin['phi'])] += bin['energy']/10000
 
     if args.performance: return calculate_shift(heatmap, ev) 

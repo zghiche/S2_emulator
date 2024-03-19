@@ -1,5 +1,6 @@
 import xml.etree.ElementTree as ET
 from collections import defaultdict
+import math
 
 def read_xml():
     tree = ET.parse('config_files/S1.ChannelAllocation.xml')
@@ -15,13 +16,13 @@ def read_xml():
                     frame  = int(frame_element.get('id'))
                     column = int(frame_element.get('column'))
                     module = hex(int(frame_element.get('Module'),16))
-                    glb_channel = 12*S1_index+channel
+                    n_link = 14 + 14*math.floor(channel/3) + S1_index
                     index  = int(frame_element.get('index'))
-                    reversed_data[module].append({'column'     : column,
-                                                  'frame'      : frame, 
-                                                  'channel'    : channel, 
-                                                  'glb_channel': glb_channel,
-                                                  'index'      : index})
+                    reversed_data[module].append({'column' : column,
+                                                  'frame'  : frame, 
+                                                  'channel': channel, 
+                                                  'n_link' : n_link,
+                                                  'index'  : index})
         S1_index += 1
     return reversed_data
 
