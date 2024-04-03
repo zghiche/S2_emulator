@@ -8,7 +8,7 @@ rOverZHistOffset: 440
 rOverZBinSize: 64
 kernelWidths: []
 areaNormalizations: []
-thresholdMaximaParam_a: 400000
+thresholdMaximaParam_a: 20000 #400000
 thresholdMaximaParam_b: 2000
 thresholdMaximaParam_c: -80
 # thresholdMaximaConstants: []

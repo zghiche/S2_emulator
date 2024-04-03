@@ -35,6 +35,7 @@ class HGCalHistogramCell {
                           Y_(Y),
                           N_(N),
                           sortKey_(sortKey),
+                          maximaOffset_(0),
                           lastFrame_(lastFrame),
                           dataValid_(true) {}
 
@@ -45,6 +46,7 @@ class HGCalHistogramCell {
                            Y_(0),
                            N_(0),
                            sortKey_(0),
+                           maximaOffset_(0),
                            lastFrame_(false),
                            dataValid_(false) {}
 

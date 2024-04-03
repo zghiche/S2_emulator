@@ -77,7 +77,7 @@ void HGCalHistoClustering::clusterizer( HGCalTriggerCellSAPtrCollection& trigger
         maximaFifoOut.push_back( std::make_unique< HGCalHistogramCell >( *col.Current ) );
         auto& hcx = maximaFifoOut.back();
         hcx->clock_ = frame + 289 + 16;
-        std::cout << "Max found. R/Z: " << hcx->sortKey_ << " Column " << hcx->index_ << std::endl;
+        // std::cout << "Seed: R/Z: " << hcx->sortKey_ << " Column " << hcx->index_ << std::endl; // it prints random stuff
       }
     
       // Compare the TC against the maxima

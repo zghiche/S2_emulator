@@ -9,7 +9,7 @@ cppyy.include('L1Trigger/L1THGCal/interface/backend_emulator/HGCalLinkTriggerCel
 from cppyy.gbl import l1thgcfirmware
 import data_handle.tools as tool
 import data_handle.plot_tools as plot
-from data_handle.event import provide_events
+from   data_handle.event import provide_events
 import data_handle.geometry as geometry
 
 def run_algorithm(config, event, args, shift):
@@ -21,13 +21,15 @@ def run_algorithm(config, event, args, shift):
 
     unpackedTCs = l1thgcfirmware.HGCalTriggerCellSAPtrCollection()
     linkUnpacking_.runLinkUnpacking(event.data_packer, unpackedTCs);
-    if args.plot: shift.append(plot.create_plot(unpackedTCs, 'post_unpacking', event, args))
+    # if args.plot: shift.append(plot.create_plot(unpackedTCs, 'post_unpacking', event, args))
 
-    # histogram = l1thgcfirmware.HGCalHistogramCellSAPtrCollection()
-    # seeding_.runSeeding(unpackedTCs, histogram)
+    histogram = l1thgcfirmware.HGCalHistogramCellSAPtrCollection()
+    seeding_.runSeeding(unpackedTCs, histogram)
+    if args.plot: shift.append(plot.create_plot(histogram, 'post_seeding', event, args))
 
-    # clusters = l1thgcfirmware.HGCalClusterSAPtrCollection()
-    # clustering_.runClustering(unpackedTCs, histogram, clusters)
+    clusters = l1thgcfirmware.HGCalClusterSAPtrCollection()
+    clustering_.runClustering(unpackedTCs, histogram, clusters)
+    
 
 if __name__ == '__main__':
     ''' python run_emulator.py --plot -n 2 '''
