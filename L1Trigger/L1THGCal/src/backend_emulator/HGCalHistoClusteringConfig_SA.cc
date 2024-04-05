@@ -108,7 +108,51 @@ ClusterAlgoConfig::ClusterAlgoConfig(unsigned int cClocks, unsigned int cInputs,
   initializeCosLUT();
 }
 
-
+ClusterAlgoConfig::ClusterAlgoConfig(unsigned int cClocks, unsigned int cInputs, unsigned int cInputs2, unsigned int cInt, unsigned int cColumns, unsigned int cRows,
+                                     unsigned int rOverZHistOffset, unsigned int rOverZBinSize, const std::vector<unsigned int>& kernelWidths,
+                                     const std::vector<unsigned int>& areaNormalizations,
+                                     const std::vector<int>& thresholdMaximaParam_a, unsigned int thresholdMaximaParam_b, int thresholdMaximaParam_c,
+                                     const std::vector<int>& maximaWidths, const std::vector<int>& fanoutWidths,
+                                     const std::vector<unsigned int>& cosLUT, unsigned int clusterizerMagicTime,
+                                     const std::map<Step,unsigned int>& stepLatency,
+                                     const std::vector<unsigned int>& depths, const std::vector<unsigned int>& triggerLayers,
+                                     const std::vector<unsigned int>& layerWeights_E, const std::vector<unsigned int>& layerWeights_E_EM,
+                                     const std::vector<unsigned int>& layerWeights_E_EM_core,
+                                     const std::vector<unsigned int>& layerWeights_E_H_early, unsigned int correction, unsigned int saturation) :
+  TriggerCellDistributionLUT_( OpenMif("config_files/S2.mif") ),
+  TriggerCellAddressLUT_( OpenMif("config_files/S2.TCaddr.mif") ),  
+  cClocks_(cClocks),
+  cInputs_(cInputs),
+  cInputs2_(cInputs2),
+  cInt_(cInt),
+  cColumns_(cColumns),
+  cRows_(cRows),
+  rOverZHistOffset_(rOverZHistOffset),
+  rOverZBinSize_(rOverZBinSize),
+  kernelWidths_(kernelWidths),
+  areaNormalizations_(areaNormalizations),
+  thresholdMaximaParam_a_(thresholdMaximaParam_a.front()),
+  thresholdMaximaParam_b_(thresholdMaximaParam_b),
+  thresholdMaximaParam_c_(thresholdMaximaParam_c),
+  thresholdMaximaConstants_(),
+  maximaWidths_(maximaWidths),
+  fanoutWidths_(fanoutWidths),
+  cosLUT_(cosLUT),
+  clusterizerMagicTime_(clusterizerMagicTime),
+  stepLatency_(stepLatency),
+  depths_(depths),
+  triggerLayers_(triggerLayers),
+  layerWeights_E_(layerWeights_E),
+  layerWeights_E_EM_(layerWeights_E_EM),
+  layerWeights_E_EM_core_(layerWeights_E_EM_core),
+  layerWeights_E_H_early_(layerWeights_E_H_early),
+  correction_(correction),
+  saturation_(saturation)
+{
+  initializeSmearingKernelConstants( cRows_, rOverZHistOffset_, rOverZBinSize_ );
+  initializeThresholdMaximaConstants( cRows_, thresholdMaximaParam_a_, thresholdMaximaParam_b_, thresholdMaximaParam_c_  );
+  initializeCosLUT();
+}
 void ClusterAlgoConfig::setStepLatencies( const std::vector<unsigned int> latencies ) {
   // Add check that stepLatency is at least same size as latencies
   // But not as cms.exception
@@ -170,6 +214,15 @@ void ClusterAlgoConfig::initializeThresholdMaximaConstants( unsigned int bins, u
     int threshold = a + b*iBin + c*iBin*iBin;
     thresholdMaximaConstants_.push_back( threshold );
   }
+}
+
+void ClusterAlgoConfig::setThresholdMaximaConstants( unsigned int bins, unsigned int a, unsigned int b, int c ) {
+  std::vector<int> new_thresholdMaximaConstants_;
+  for ( unsigned int iBin = 0; iBin < bins; ++iBin ) {
+    int threshold = a + b*iBin + c*iBin*iBin;
+    new_thresholdMaximaConstants_.push_back( threshold );
+  }
+  thresholdMaximaConstants_ = new_thresholdMaximaConstants_;
 }
 
 void ClusterAlgoConfig::initializeCosLUT() {

@@ -12,7 +12,6 @@
 #endif
 
 
-
 namespace l1thgcfirmware {
 
   enum Step { // Uninitialized = -1, 
@@ -44,6 +43,17 @@ namespace l1thgcfirmware {
                       unsigned int rOverZHistOffset, unsigned int rOverZBinSize, const std::vector<unsigned int>& kernelWidths,
                       const std::vector<unsigned int>& areaNormalizations,
                       unsigned int thresholdMaximaParam_a, unsigned int thresholdMaximaParam_b, int thresholdMaximaParam_c,
+                      const std::vector<int>& maximaWidths, const std::vector<int>& fanoutWidths,
+                      const std::vector<unsigned int>& cosLUT, unsigned int clusterizerMagicTime,
+                      const std::map<Step,unsigned int>& stepLatency,
+                      const std::vector<unsigned int>& depths, const std::vector<unsigned int>& triggerLayers,
+                      const std::vector<unsigned int>& layerWeights_E, const std::vector<unsigned int>& layerWeights_E_EM,
+                      const std::vector<unsigned int>& layerWeights_E_EM_core,
+                      const std::vector<unsigned int>& layerWeights_E_H_early, unsigned int correction, unsigned int saturation);
+    ClusterAlgoConfig(unsigned int cClocks, unsigned int cInputs, unsigned int cInputs2, unsigned int cInt, unsigned int cColumns, unsigned int cRows,
+                      unsigned int rOverZHistOffset, unsigned int rOverZBinSize, const std::vector<unsigned int>& kernelWidths,
+                      const std::vector<unsigned int>& areaNormalizations,
+                      const std::vector<int>& thresholdMaximaParam_a, unsigned int thresholdMaximaParam_b, int thresholdMaximaParam_c,
                       const std::vector<int>& maximaWidths, const std::vector<int>& fanoutWidths,
                       const std::vector<unsigned int>& cosLUT, unsigned int clusterizerMagicTime,
                       const std::map<Step,unsigned int>& stepLatency,
@@ -193,6 +203,8 @@ namespace l1thgcfirmware {
 
     void initializeLUTs();
 
+    void setThresholdMaximaConstants( unsigned int bins, unsigned int a, unsigned int b, int c );
+    
     void printConfiguration() const; // For debugging
 
   private:

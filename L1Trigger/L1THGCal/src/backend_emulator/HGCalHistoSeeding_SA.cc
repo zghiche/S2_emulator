@@ -212,7 +212,7 @@ void HGCalHistoSeeding::maximaFinder1D( HGCalHistogramCellSAPtrCollection& histo
 
   HGCalHistogramCellSAPtrCollection lHistogram;
   lHistogram.reserve( histogram.size() );  
-  for( auto& hc : histogram ) lHistogram.push_back( std::make_unique<HGCalHistogramCell>( *hc ) );
+  for( auto& hc : histogram ) lHistogram.push_back( std::make_shared<HGCalHistogramCell>( *hc ) );
 
   for ( unsigned int iRow = 0; iRow != config_.cRows(); ++iRow ) {  
     auto width = config_.maximaWidths( iRow ); 
@@ -242,7 +242,7 @@ void HGCalHistoSeeding::maximaFinder1D( HGCalHistogramCellSAPtrCollection& histo
   
   histogram = lHistogram;  
   // for (const auto& i : histogram) {
-  //   if (i->maximaOffset() != 0 and i->S()>3000) std::cout << "1D Max found. R/Z: " << i->sortKey() << " Column " << i->index() << " Energy " << i->S() << std::endl;    
+  //   if (i->maximaOffset() and i->S()>3000) std::cout << "1D Max found. R/Z: " << i->sortKey() << " Column " << i->index() << std::endl;    
   // }
 }
 
@@ -250,15 +250,15 @@ void HGCalHistoSeeding::maximaFinder2D( HGCalHistogramCellSAPtrCollection& histo
 {
   const unsigned int stepLatency = config_.getStepLatency( Step::Maxima2D );
  
-  HGCalHistogramCellSAPtrCollection l2Histogram;
-  l2Histogram.reserve( histogram.size() );  
-  for( auto& hc : histogram ) l2Histogram.push_back( std::make_unique<HGCalHistogramCell>( *hc ) );
+  HGCalHistogramCellSAPtrCollection lHistogram;
+  lHistogram.reserve( histogram.size() );  
+  for( auto& hc : histogram ) lHistogram.push_back( std::make_unique<HGCalHistogramCell>( *hc ) );
 
   for ( unsigned int iRow = 0; iRow != config_.cRows(); ++iRow ) {   
     for ( unsigned int iColumn = 0; iColumn != config_.cColumns(); ++iColumn ) {
       const unsigned int binIndex = ( config_.cColumns() * iRow ) + iColumn;
   
-      auto& i = *l2Histogram.at(binIndex);
+      auto& i = *lHistogram.at(binIndex);
 
       bool criteria0( true ) , criteria1( i.maximaOffset_ == 0 ) , criteria2( false ) , criteria3( i.S_ > config_.thresholdMaxima( i.sortKey_ ) );
 
@@ -277,10 +277,7 @@ void HGCalHistoSeeding::maximaFinder2D( HGCalHistogramCellSAPtrCollection& histo
     }
   }
   
-  histogram = l2Histogram;   
-  for (const auto& i : histogram) {
-    if (i->maximaOffset() != 0) std::cout << "2D Max found. R/Z: " << i->sortKey() << " Column " << 4*i->index() << " Energy " << i->S() << std::endl;    
-  }
+  histogram = lHistogram;   
 }
 
 void HGCalHistoSeeding::calculateAveragePosition(HGCalHistogramCellSAPtrCollection& histogram) const {
@@ -298,9 +295,11 @@ void HGCalHistoSeeding::calculateAveragePosition(HGCalHistogramCellSAPtrCollecti
 
 void HGCalHistoSeeding::maximaFanout( HGCalHistogramCellSAPtrCollection& histogram ) const
 {
+  for (const auto& i : histogram) {
+    if (i->maximaOffset()==1) std::cout << "2D Max found. R/Z: " << i->sortKey() << " Column " << i->index() << " Energy " << i->S() << std::endl;    
+  }
   const unsigned int stepLatency = config_.getStepLatency( Step::MaximaFanout );
   const std::vector< int > Sign = { -1 , 1 };
-  
   
   for ( unsigned int iRow = 0; iRow != config_.cRows(); ++iRow ) {   
     auto width = config_.fanoutWidths( iRow ); 
@@ -360,13 +359,12 @@ void HGCalHistoSeeding::maximaFanout( HGCalHistogramCellSAPtrCollection& histogr
                 other->right_ = false;            
               }        
             }
-            
           }    
         }
       }
     }
   }
   // for (const auto& i : histogram) {
-  //   if (i->maximaOffset() != 0) std::cout << "2D Max Fanout. R/Z: " << i->sortKey() << " Column " << i->index() << " Energy " << i->S() << std::endl;    
+  //   if (i->maximaOffset() or i->left_ or i->right_) std::cout << "2D Max Fanout. R/Z: " << i->sortKey() << " Column " << i->index() << " Energy " << i->maximaOffset() << std::endl;    
   // }
 }

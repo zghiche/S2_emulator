@@ -1,11 +1,37 @@
 import matplotlib.pyplot as plt
 import numpy as np
+import yaml
+
+with open('config.yaml', "r") as afile:
+    cfg = yaml.safe_load(afile)
+
+def plot_seeds(seeds):
+    n_params = len(cfg['thresholdMaximaParam_a'])
+    seeds_list, pt_list, eta_list, thr_list = [], [], [], []
+    for index, thr in enumerate(cfg['thresholdMaximaParam_a']):
+        seeds_list.append([seed[0] for idx, seed in enumerate(seeds) if idx%n_params == index])
+        eta_list.append([seed[1] for idx, seed in enumerate(seeds) if idx%n_params == index])
+        pt_list.append([seed[2] for idx, seed in enumerate(seeds) if idx%n_params == index])
+        thr_list.append('thr:'+str(thr))
+    
+    plt.hist(seeds_list, bins=5, label=thr_list) 
+    plt.legend()
+    plt.xlabel('identified seeds')
+    plt.ylabel('Counts')
+    plt.title('Histogram 2D seeds')
+    plt.savefig('plots/histogram_seed_vs_thr_'+str(n_params)+'.pdf')
+    plt.clf()
+ 
+    for thr in range(n_params):
+        # plt.scatter(eta_list[thr], list(np.asarray(seeds_list[thr])+0.1*thr), label=thr_list[thr]) 
+        plt.scatter(pt_list[thr], list(np.asarray(seeds_list[thr])+0.1*thr), label=thr_list[thr]) 
+    plt.legend()
+    plt.ylabel('number of identified seeds')
+    plt.xlabel('$pT [GeV]$')
+    plt.title('Histogram 2D seeds')
+    plt.savefig('plots/histogram_seed_vs_pT_'+str(n_params)+'.pdf')
 
 def produce_plots(shift_pre, shift_post):
-    # create_histo([phi[1] for phi in shift_pre], 'phi', 'post_stage1',
-    #              [phi[3] for phi in shift_pre])
-    # create_histo([phi[1] for phi in shift_post], 'phi', 'post_stage2_unpacking',
-    #              [phi[3] for phi in shift_post])
     create_histo([r_z[0] for r_z in shift_pre], 'r_z', 'pre_post_unpacking',
                  [r_z[0] for r_z in shift_post])
     create_histo([phi[1] for phi in shift_pre], 'phi', 'pre_post_unpacking',
@@ -41,6 +67,7 @@ def create_plot_py(objects, ev, args):
 def create_plot(objects, step, ev, args):
     heatmap = np.zeros((64, 124))
 
+    seed = 0
     for bin in objects:
       if (step=='post_unpacking') and (bin.energy()>0):
         if args.col:  heatmap[define_bin(bin.rOverZ())[0], bin.index()] += bin.energy()/10000
@@ -50,8 +77,10 @@ def create_plot(objects, step, ev, args):
       if (step=='post_seeding') and (bin.S()>0):
         heatmap[bin.sortKey()-1, bin.index()-1] += (bin.S())/10000
         # print("Smeared Energy : ", bin.S(), "R/Z bin", bin.sortKey(), "col", bin.index())
-
-    if args.performance: return calculate_shift(heatmap, ev) 
+        if (bin.maximaOffset() == cfg['fanoutWidths'][bin.sortKey()-1]): seed += 1    
+   
+    if args.performance: return calculate_shift(heatmap, ev)
+    if args.thr_seed: return [seed, ev.eta_gen, ev.pT_gen]
     if args.col: step = 'columns_' + step
     create_heatmap(heatmap, step, ev.event)
 
@@ -65,7 +94,7 @@ def create_heatmap(heatmap, title, event_number):
     plt.savefig(f'plots/{event_number}_{title}.pdf')
     plt.clf()
 
-def create_histo(data, variable, title, data2=None):
+def create_histo(data, variable, title, data2=None, data3=None):
     if variable == 'p_t':
         plt.hist(data,  bins=25, alpha=0.5, label='pre unpacking')
         plt.hist(data2, bins=25, alpha=0.5, label='post unpacking')
@@ -73,14 +102,12 @@ def create_histo(data, variable, title, data2=None):
         plt.hist(data, bins=25, range=(-0.01,0.01), alpha=0.5, label='pre unpacking')
         plt.hist(data2, bins=25, range=(-0.01,0.01), alpha=0.5, label='post unpacking')
     if variable == 'phi': 
-        # plt.hist(data, bins=25, range=(-0.05,0.05), alpha=0.5, label='pre unpacking')
-        # plt.hist(data2, bins=25, range=(-0.05,0.05), alpha=0.5, label='pre unpacking')
         plt.hist(data, bins=25, alpha=0.5, label='columns pre')
         plt.hist(data2, bins=25, alpha=0.5, label='columns post')
     plt.legend()
     xlabel = (r'$\phi_{bin}^{max energy} - \phi_{gen particle}$' if variable == 'phi' else
           r'$\frac{r}{z}_{bin}^{max energy} - \frac{r}{z}_{gen particle}$' if variable == 'r_z' else
-          r'$p^{T}_{bin} / p^{T}_{gen particle}$')
+          r'$p^{T}_{bin} / p^{T}_{gen particle}$' )
     plt.xlabel(xlabel)
     plt.ylabel('Counts')
     plt.title('Histogram '+ title + ' ' + xlabel)

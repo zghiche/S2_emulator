@@ -35,8 +35,11 @@ class HGCalHistogramCell {
                           Y_(Y),
                           N_(N),
                           sortKey_(sortKey),
+                          sortKey2_(0),
                           maximaOffset_(0),
                           lastFrame_(lastFrame),
+                          right_(false),
+                          left_(false),
                           dataValid_(true) {}
 
     HGCalHistogramCell() : clock_(0),
@@ -46,8 +49,11 @@ class HGCalHistogramCell {
                            Y_(0),
                            N_(0),
                            sortKey_(0),
+                           sortKey2_(0),
                            maximaOffset_(0),
                            lastFrame_(false),
+                           right_(false),
+                           left_(false),
                            dataValid_(false) {}
 
     HGCalHistogramCell( unsigned int clock,

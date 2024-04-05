@@ -23,6 +23,43 @@ void HGCalHistoClustering::runClustering(HGCalTriggerCellSAPtrCollection& trigge
   clusterTree(clustersOut);
 }
 
+// unsigned int Dist( const HGCalTriggerCellSAPtr& TC , const HGCalHistogramCellSAPtr& Maxima , const ClusterAlgoConfig& Config )
+// { 
+//   if ( ( TC == nullptr ) or ( Maxima == nullptr ) ) return UINT_MAX;
+//   
+//   // -------------------------------------------------
+//   // Cartesian for comparison
+//   // double tc_phi = TC->phi_ * (2.0*M_PI/3.0) / 4096;
+//   // double tc_x = TC->rOverZ_ * std::cos( tc_phi );
+//   // double tc_y = TC->rOverZ_ * std::sin( tc_phi );
+// 
+//   // double hc_phi = Maxima->X_ * (2.0*M_PI/3.0) / 4096;
+//   // double hc_x = Maxima->Y_ * std::cos( hc_phi );
+//   // double hc_y = Maxima->Y_ * std::sin( hc_phi );
+//   //      
+//   // double dx = tc_x - hc_x;
+//   // double dy = tc_y - hc_y;
+//   //            
+//   // double dr2 = ( dx * dx ) + ( dy * dy );
+//   // -------------------------------------------------
+//                             
+//   // -------------------------------------------------
+//   unsigned int r1 = TC->rOverZ_;
+//   unsigned int r2 = Maxima->Y_;
+//   int dR = r1 - r2;
+//   int dPhi = TC->phi_ - Maxima->X_;
+//   unsigned int dR2 = dR * dR;
+//   const int maxbin = Config.nBinsCosLUT()-1;
+//   unsigned int cosTerm = ( abs(dPhi) > maxbin ) ? Config.cosLUT( maxbin ) : Config.cosLUT( abs(dPhi) ); // stored in 10 bit
+//   int correction = ( ( ( r1 * r2 ) >> 1 ) * cosTerm ) >> 17;
+//   dR2 += correction;
+//         
+//   // std::cout << ( dR2 - dr2 ) << " : " << correction << std::endl;
+//   // -------------------------------------------------
+// 
+//   return dR2;
+// }
+
 void HGCalHistoClustering::clusterizer( HGCalTriggerCellSAPtrCollection& triggerCells, HGCalHistogramCellSAPtrCollection& histogram, HGCalTriggerCellSAPtrCollection& triggerCellsRamOut, HGCalHistogramCellSAPtrCollection& maximaFifoOut ) const
 {
   std::array< ClusterizerColumn , 124 > lColumns;
@@ -39,7 +76,7 @@ void HGCalHistoClustering::clusterizer( HGCalTriggerCellSAPtrCollection& trigger
   // Map the maxima into the FIFO
   for( auto& i : histogram ){
     if( i->maximaOffset_>0 or i->left_ or i->right_ ) lColumns.at( i->index_ ).MaximaFifo.push_back( i );      
-    if( i->maximaOffset_>0 ) std::cout << "Max found. R/Z: " << i->sortKey_ << " Column " << i->index_ << std::endl; 
+    // if( i->maximaOffset_>0 or i->left_ or i->right_ ) std::cout << "Max found. R/Z: " << i->sortKey_ << " Column " << i->index_ << std::endl; 
   }
   histogram.clear();
 
@@ -54,7 +91,6 @@ void HGCalHistoClustering::clusterizer( HGCalTriggerCellSAPtrCollection& trigger
     for ( unsigned int iColumn = 0; iColumn != config_.cColumns(); ++iColumn ) {      
       auto& col = lColumns.at( iColumn );
       auto& tc = col.MappedTCs.at( frame );
-      
                                                         
       // Get the maxima from the FIFO  //  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< STILL TRYING TO EMULATE HOW THE FIRMWARE DOES THIS!
       if( col.counter < 0 )
@@ -74,10 +110,10 @@ void HGCalHistoClustering::clusterizer( HGCalTriggerCellSAPtrCollection& trigger
       if ( col.Current != nullptr )
       {
         // std::cout << col.Current; 
+        // std::cout << "Analysing column " << col.Current->index_ << "Max " << col.Current->sortKey_ << std::endl;
         maximaFifoOut.push_back( std::make_unique< HGCalHistogramCell >( *col.Current ) );
         auto& hcx = maximaFifoOut.back();
         hcx->clock_ = frame + 289 + 16;
-        // std::cout << "Seed: R/Z: " << hcx->sortKey_ << " Column " << hcx->index_ << std::endl; // it prints random stuff
       }
     
       // Compare the TC against the maxima

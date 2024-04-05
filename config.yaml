@@ -8,9 +8,9 @@ rOverZHistOffset: 440
 rOverZBinSize: 64
 kernelWidths: []
 areaNormalizations: []
-thresholdMaximaParam_a: 20000 #400000
-thresholdMaximaParam_b: 2000
-thresholdMaximaParam_c: -80
+thresholdMaximaParam_a: [500, 1000, 5000, 10000, 30000] # 400000
+thresholdMaximaParam_b: 0 # 2000
+thresholdMaximaParam_c: 0 # -80
 # thresholdMaximaConstants: []
 maximaWidths: [ 6 , 5 , 5 , 5 , 4 , 4 , 4 , 4 , 3 , 3 , 3 , 3 , 3 , 3 , 3 , 2 , 2 , 2 , 2 , 2 , 2 , 2 , 2 , 2 , 2 , 2 , 2 , 2 , 2 , 2 , 2 , 1 , 1 , 1 , 1 , 1 , 1 , 1 , 1 , 1 , 1 , 1 , 1 , 1 , 1 , 1 , 1 , 1 , 1 , 1 , 1 , 1 , 1 , 1 ]
 fanoutWidths: [ 6 , 5 , 5 , 5 , 4 , 4 , 4 , 4 , 3 , 3 , 3 , 3 , 3 , 3 , 3 , 2 , 2 , 2 , 2 , 2 , 2 , 2 , 2 , 2 , 2 , 2 , 2 , 2 , 2 , 2 , 2 , 1 , 1 , 1 , 1 , 1 , 1 , 1 , 1 , 1 , 1 , 1 , 1 , 1 , 1 , 1 , 1 , 1 , 1 , 1 , 1 , 1 , 1 , 1 ]
