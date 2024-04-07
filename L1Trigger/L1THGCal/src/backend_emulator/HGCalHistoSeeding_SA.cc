@@ -295,9 +295,9 @@ void HGCalHistoSeeding::calculateAveragePosition(HGCalHistogramCellSAPtrCollecti
 
 void HGCalHistoSeeding::maximaFanout( HGCalHistogramCellSAPtrCollection& histogram ) const
 {
-  for (const auto& i : histogram) {
-    if (i->maximaOffset()==1) std::cout << "2D Max found. R/Z: " << i->sortKey() << " Column " << i->index() << " Energy " << i->S() << std::endl;    
-  }
+  // for (const auto& i : histogram) {
+  //   if (i->maximaOffset()==1) std::cout << "2D Max found. R/Z: " << i->sortKey() << " Column " << i->index() << " Energy " << i->S() << std::endl;    
+  // }
   const unsigned int stepLatency = config_.getStepLatency( Step::MaximaFanout );
   const std::vector< int > Sign = { -1 , 1 };
   

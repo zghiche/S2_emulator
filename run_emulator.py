@@ -21,7 +21,7 @@ def run_algorithm(config, event, args, shift, seed):
 
     unpackedTCs = l1thgcfirmware.HGCalTriggerCellSAPtrCollection()
     linkUnpacking_.runLinkUnpacking(event.data_packer, unpackedTCs);
-    # if args.plot: shift.append(plot.create_plot(unpackedTCs, 'post_unpacking', event, args))
+    if args.plot: shift.append(plot.create_plot(unpackedTCs, 'post_unpacking', event, args))
 
     histogram = l1thgcfirmware.HGCalHistogramCellSAPtrCollection()
     seeding_.runSeeding(unpackedTCs, histogram)
@@ -46,18 +46,21 @@ if __name__ == '__main__':
     params = tool.define_map()
     config = l1thgcfirmware.ClusterAlgoConfig(**params)
 
-    shift_pre, shift_post, seeds = [], [], []
+    shift_pre, shift_post = [], []
+    seeds = {thr_b: [] for thr_b in params['thresholdMaximaParam_b']}
+    
     events = provide_events(args.n)
     xml_data = geometry.read_xml()
     for idx, event in enumerate(events):
       if idx % 50 == 0: print('Processing event', idx)
-      print('Processing event {}. (\u03B7, \u03C6) = {:.2f}, {:.2f}. pT = {:.2f} GeV'.format(
-            event.event, event.eta_gen, event.phi_gen, event.pT_gen))
+      # print('Processing event {}. (\u03B7, \u03C6) = {:.2f}, {:.2f}. pT = {:.2f} GeV'.format(
+      #       event.event, event.eta_gen, event.phi_gen, event.pT_gen))
 
       event._data_packer(args, xml_data, shift_pre)
-      for thr in params['thresholdMaximaParam_a']:
-        config.setThresholdMaximaConstants(params['cRows'], thr, 0, 0)
-        run_algorithm(config, event, args, shift_post, seeds)
-    
+      for thr_b in params['thresholdMaximaParam_b']:
+        for thr_a in params['thresholdMaximaParam_a']:
+          config.setThresholdMaximaConstants(params['cRows'], thr_a, thr_b, 0)
+          run_algorithm(config, event, args, shift_post, seeds[thr_b])
+        
     if args.performance: plot.produce_plots(shift_pre, shift_post)
-    if args.thr_seed: plot.plot_seeds(seeds)
+    if args.thr_seed: plot.plot_seeds(seeds, args)

@@ -1,35 +1,63 @@
 import matplotlib.pyplot as plt
+from scipy.stats import binomtest
 import numpy as np
 import yaml
 
 with open('config.yaml', "r") as afile:
     cfg = yaml.safe_load(afile)
 
-def plot_seeds(seeds):
-    n_params = len(cfg['thresholdMaximaParam_a'])
-    seeds_list, pt_list, eta_list, thr_list = [], [], [], []
-    for index, thr in enumerate(cfg['thresholdMaximaParam_a']):
-        seeds_list.append([seed[0] for idx, seed in enumerate(seeds) if idx%n_params == index])
-        eta_list.append([seed[1] for idx, seed in enumerate(seeds) if idx%n_params == index])
-        pt_list.append([seed[2] for idx, seed in enumerate(seeds) if idx%n_params == index])
-        thr_list.append('thr:'+str(thr))
-    
-    plt.hist(seeds_list, bins=5, label=thr_list) 
-    plt.legend()
-    plt.xlabel('identified seeds')
-    plt.ylabel('Counts')
-    plt.title('Histogram 2D seeds')
-    plt.savefig('plots/histogram_seed_vs_thr_'+str(n_params)+'.pdf')
-    plt.clf()
+def compute_efficiency_plots(seeds, variable, thr, bin_n=10):
+    bin_edges = np.linspace(min(variable), max(variable), num=bin_n+1)
+    indices = np.digitize(variable, bin_edges) - 1
  
-    for thr in range(n_params):
-        # plt.scatter(eta_list[thr], list(np.asarray(seeds_list[thr])+0.1*thr), label=thr_list[thr]) 
-        plt.scatter(pt_list[thr], list(np.asarray(seeds_list[thr])+0.1*thr), label=thr_list[thr]) 
+    eff, lo_err, up_err = {}, {}, {}
+    for index in range(bin_n):
+      """k is number of successes, n is number of trials"""
+      bin_indices = np.where(indices == index)[0]
+      seeds_bin = [seeds[i] for i in bin_indices]
+      k, n = sum(1 for x in seeds_bin if x >= 1), len(seeds_bin)
+      if n == 0: eff[index], lo_err[index], up_err[index] = 0, 0, 0; continue
+
+      result = binomtest(k, n, p=k/n)
+      eff[index] = k/n
+      lo_err[index] = k/n - result.proportion_ci(confidence_level=0.95).low
+      up_err[index] = result.proportion_ci(confidence_level=0.95).high - k/n
+
+    plt.errorbar((bin_edges[1:] + bin_edges[:-1])/2, eff.values(), 
+                 yerr=np.array(list(zip(lo_err.values(), up_err.values()))).T,
+                 xerr=(bin_edges[1] - bin_edges[0])/2, fmt='o', capsize=3, label=thr, alpha=0.7) 
+
+def produce_efficiency_plots(variable, thr_b, args):
     plt.legend()
-    plt.ylabel('number of identified seeds')
-    plt.xlabel('$pT [GeV]$')
-    plt.title('Histogram 2D seeds')
-    plt.savefig('plots/histogram_seed_vs_pT_'+str(n_params)+'.pdf')
+    plt.grid()
+    plt.xlabel('identified seeds' if variable=='thr' else r'$p_{T}$ [GeV]' if variable=='pT' else r'$\eta$')
+    plt.ylabel('Counts' if variable=='thr' else '% of identified seeds')
+    plt.title('Histogram 2D seeds '+variable)
+    thresholds = '_a'+'_'.join(map(str, [int(i/1000) for i in cfg['thresholdMaximaParam_a']]))+ \
+                 '_b'+str(thr_b)+'_c'+str(cfg['thresholdMaximaParam_c'])
+    plt.savefig('plots/histogram_seed_vs_'+variable+thresholds+'.pdf')
+    plt.clf()
+
+def plot_seeds(seeds, args):
+    for thr_b in seeds.keys():
+      n_params = len(cfg['thresholdMaximaParam_a'])
+      seeds_list, p_t_list, eta_list, thr_list = [], [], [], []
+      for index, thr in enumerate(cfg['thresholdMaximaParam_a']):
+          seeds_list.append([seed[0] for idx, seed in enumerate(seeds[thr_b]) if idx%n_params == index])
+          eta_list.append([eta[1] for idx, eta in enumerate(seeds[thr_b]) if idx%n_params == index])
+          p_t_list.append([p_t[2] for idx, p_t in enumerate(seeds[thr_b]) if idx%n_params == index])
+          thr_list.append('a:'+str(int(thr/1000))+' b:'+str(thr_b))
+      
+      plt.hist(seeds_list, bins=4, label=thr_list) 
+      produce_efficiency_plots('thr', thr_b, args)
+
+      for thr in range(len(thr_list)):
+          compute_efficiency_plots(seeds_list[thr], p_t_list[thr], thr_list[thr], 7)
+      produce_efficiency_plots('pT', thr_b, args)
+ 
+      for thr in range(len(thr_list)):
+          compute_efficiency_plots(seeds_list[thr], eta_list[thr], thr_list[thr], 5)
+      produce_efficiency_plots('eta', thr_b, args)
 
 def produce_plots(shift_pre, shift_post):
     create_histo([r_z[0] for r_z in shift_pre], 'r_z', 'pre_post_unpacking',
@@ -77,8 +105,11 @@ def create_plot(objects, step, ev, args):
       if (step=='post_seeding') and (bin.S()>0):
         heatmap[bin.sortKey()-1, bin.index()-1] += (bin.S())/10000
         # print("Smeared Energy : ", bin.S(), "R/Z bin", bin.sortKey(), "col", bin.index())
-        if (bin.maximaOffset() == cfg['fanoutWidths'][bin.sortKey()-1]): seed += 1    
-   
+        if (bin.maximaOffset() == cfg['fanoutWidths'][bin.sortKey()]): seed += 1    
+  
+    if (seed == 0 and ev.pT_gen>20 and ev.eta_gen>2.4): 
+        print('No seed found for event', ev.event) 
+        create_heatmap(heatmap, step, ev.event)
     if args.performance: return calculate_shift(heatmap, ev)
     if args.thr_seed: return [seed, ev.eta_gen, ev.pT_gen]
     if args.col: step = 'columns_' + step
