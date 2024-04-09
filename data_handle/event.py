@@ -7,8 +7,8 @@ from cppyy.gbl import l1thgcfirmware, std
 
 import data_handle.plot_tools as plot
 from data_handle.tools import compress_value
-
 import time
+
 class EventData():
     def __init__(self, ds_TCs, gen):
         self.ds_TCs  = ds_TCs
@@ -95,7 +95,7 @@ class EventData():
                     code_energy, value_r_z, value_phi
                     ]
    
-        # if args.plot: shift.append(plot.create_plot_py(data_heatmap, self, args))
+        if args.plot: shift.append(plot.create_plot_py(data_heatmap, self, args))
         return data_TCs
     
     def _data_packer(self, args, xml, shift):
@@ -109,8 +109,8 @@ class EventData():
                 data_links[84*frame+n_link] = link_data
 
         # filling data into emulator c++ variables
-        LinksInData = std.vector['std::unique_ptr<l1thgcfirmware::HGCalLinkTriggerCell>']()
         HGCalLinkTriggerCell = l1thgcfirmware.HGCalLinkTriggerCell
+        LinksInData = std.vector['std::unique_ptr<l1thgcfirmware::HGCalLinkTriggerCell>']()
 
         # number of links = NChannels*Nframes
         for link_frame in range(84*108):

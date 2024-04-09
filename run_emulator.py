@@ -48,7 +48,7 @@ if __name__ == '__main__':
 
     shift_pre, shift_post = [], []
     seeds = {thr_b: [] for thr_b in params['thresholdMaximaParam_b']}
-    
+ 
     events = provide_events(args.n)
     xml_data = geometry.read_xml()
     for idx, event in enumerate(events):
@@ -56,6 +56,7 @@ if __name__ == '__main__':
       # print('Processing event {}. (\u03B7, \u03C6) = {:.2f}, {:.2f}. pT = {:.2f} GeV'.format(
       #       event.event, event.eta_gen, event.phi_gen, event.pT_gen))
 
+      if (event.pT_gen<10): continue
       event._data_packer(args, xml_data, shift_pre)
       for thr_b in params['thresholdMaximaParam_b']:
         for thr_a in params['thresholdMaximaParam_a']:

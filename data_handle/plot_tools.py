@@ -70,6 +70,12 @@ def produce_plots(shift_pre, shift_post):
 def define_bin(r_z, phi=0):
     return int((r_z-440)/64)-1, int(124*phi/3.14)-1
 
+def distance(tc, gen):
+    r_z_bin, phi_bin = bin2coord(tc.sortKey()-1+0.5, -23+tc.index()-1+0.5)
+    eta_bin = -np.log(np.tan((r_z_bin*0.7)/(4096*2)))
+    print(np.sqrt((eta_bin-gen.eta_gen)**2+(phi_bin-gen.phi_gen)**2))
+    return np.sqrt((eta_bin-gen.eta_gen)**2+(phi_bin-gen.phi_gen)**2)
+
 def bin2coord(r_z_bin, phi_bin):
     return 64*(r_z_bin+1)+440, np.pi*(phi_bin+1)/124
 
@@ -103,9 +109,10 @@ def create_plot(objects, step, ev, args):
         # print("Energy", bin.energy(), "R/Z", int((bin.rOverZ()-440)/64), "Column", bin.index())
 
       if (step=='post_seeding') and (bin.S()>0):
-        heatmap[bin.sortKey()-1, bin.index()-1] += (bin.S())/10000
+        heatmap[bin2coord(bin.sortKey()-1, bin.index()-1)] += (bin.S())/10000
         # print("Smeared Energy : ", bin.S(), "R/Z bin", bin.sortKey(), "col", bin.index())
-        if (bin.maximaOffset() == cfg['fanoutWidths'][bin.sortKey()]): seed += 1    
+        if (bin.maximaOffset() == cfg['fanoutWidths'][bin.sortKey()]) and \
+           (distance(bin, ev)<10): seed += 1    
   
     if (seed == 0 and ev.pT_gen>20 and ev.eta_gen>2.4): 
         print('No seed found for event', ev.event) 
