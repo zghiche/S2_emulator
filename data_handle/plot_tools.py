@@ -73,7 +73,6 @@ def define_bin(r_z, phi=0):
 def distance(tc, gen):
     r_z_bin, phi_bin = bin2coord(tc.sortKey()-1+0.5, -23+tc.index()-1+0.5)
     eta_bin = -np.log(np.tan((r_z_bin*0.7)/(4096*2)))
-    print(np.sqrt((eta_bin-gen.eta_gen)**2+(phi_bin-gen.phi_gen)**2))
     return np.sqrt((eta_bin-gen.eta_gen)**2+(phi_bin-gen.phi_gen)**2)
 
 def bin2coord(r_z_bin, phi_bin):
@@ -102,6 +101,7 @@ def create_plot(objects, step, ev, args):
     heatmap = np.zeros((64, 124))
 
     seed = 0
+    # r_z, phi, z = [], [], []
     for bin in objects:
       if (step=='post_unpacking') and (bin.energy()>0):
         if args.col:  heatmap[define_bin(bin.rOverZ())[0], bin.index()] += bin.energy()/10000
@@ -109,27 +109,33 @@ def create_plot(objects, step, ev, args):
         # print("Energy", bin.energy(), "R/Z", int((bin.rOverZ()-440)/64), "Column", bin.index())
 
       if (step=='post_seeding') and (bin.S()>0):
-        heatmap[bin2coord(bin.sortKey()-1, bin.index()-1)] += (bin.S())/10000
+        heatmap[bin.sortKey()-1, bin.index()-1] += (bin.S())/10000
         # print("Smeared Energy : ", bin.S(), "R/Z bin", bin.sortKey(), "col", bin.index())
         if (bin.maximaOffset() == cfg['fanoutWidths'][bin.sortKey()]) and \
-           (distance(bin, ev)<10): seed += 1    
-  
-    if (seed == 0 and ev.pT_gen>20 and ev.eta_gen>2.4): 
-        print('No seed found for event', ev.event) 
-        create_heatmap(heatmap, step, ev.event)
+           (distance(bin, ev) < 10): seed += 1    
+ 
+    if (seed == 3): 
+        print(f'3 seeds found for event {ev.event}, (pT, \u03B7, \u03C6)=({ev.pT_gen:.0f}, {ev.eta_gen:.2f},{ev.phi_gen:.2f})') 
+        create_heatmap(heatmap, step, ev)
     if args.performance: return calculate_shift(heatmap, ev)
     if args.thr_seed: return [seed, ev.eta_gen, ev.pT_gen]
     if args.col: step = 'columns_' + step
-    create_heatmap(heatmap, step, ev.event)
+    create_heatmap(heatmap, step, ev)
 
-def create_heatmap(heatmap, title, event_number):
-    plt.imshow(heatmap, cmap='viridis', aspect='auto')
-    plt.colorbar(label='Transverse Energy')
-    plt.xlabel('Column, \u03C6 bin')
-    plt.ylabel('R/Z bin')
-    plt.title(f'{title} Histogram - Event {event_number}'.replace('_', ' '))
+def create_heatmap(heatmap, title, gen):
+    plt.imshow(heatmap, cmap='viridis', origin='lower', aspect='auto')
+    x_tick_labels = [int(val) for val in np.linspace(-30, 150, num=7)]
+    y_tick_labels = ['{:.2f}'.format(val) for val in np.linspace(0, (64**2+440)*0.7/4096, num=7)]
+    plt.xticks(np.linspace(0, 123, num=7), labels=x_tick_labels)
+    plt.yticks(np.linspace(0, 63,  num=7), labels=y_tick_labels)
+    plt.colorbar(label='Transverse Energy [GeV]')
+    plt.xlabel('\u03C6 (degrees)')
+    plt.ylabel('r/z')
+    plt.scatter([23+(gen.phi_gen)*84/(2*np.pi/3)-1], [((4096/0.7)*np.tan(2*np.arctan(np.exp(-gen.eta_gen)))-440)/64-1], 
+                color='red', marker='x', s=50)
+    plt.title(f'{title} - {gen.event}, (pT, \u03B7, \u03C6)=({gen.pT_gen:.0f} GeV,{gen.eta_gen:.2f},{gen.phi_gen:.2f})'.replace('_', ' '))
 
-    plt.savefig(f'plots/{event_number}_{title}.pdf')
+    plt.savefig(f'plots/{gen.event}_{title}.pdf')
     plt.clf()
 
 def create_histo(data, variable, title, data2=None, data3=None):
