@@ -25,7 +25,7 @@ def run_algorithm(config, event, args, shift, seed):
 
     histogram = l1thgcfirmware.HGCalHistogramCellSAPtrCollection()
     seeding_.runSeeding(unpackedTCs, histogram)
-    if args.plot: shift.append(plot.create_plot(histogram, 'post_seeding', event, args))
+    if args.plot and not args.performance: shift.append(plot.create_plot(histogram, 'post_seeding', event, args))
     if args.thr_seed: seed.append(plot.create_plot(histogram, 'post_seeding', event, args))
 
     clusters = l1thgcfirmware.HGCalClusterSAPtrCollection()
@@ -37,10 +37,11 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Stage-2 Emulator Parameters')
     parser.add_argument('-n', type=int, default=1, help='Provide the number of events')
-    parser.add_argument('--plot',        action='store_true', help='Create plots for each event')
+    parser.add_argument('--plot',        action='store_true', help='Create plots')
     parser.add_argument('--col',         action='store_true', help='Create plots using column numbers')
-    parser.add_argument('--thr_seed',    action='store_true', help='Create plots using column numbers')
-    parser.add_argument('--performance', action='store_true', help='Create plots calculating the distance gen_particle/max_TC')
+    parser.add_argument('--phi',         action='store_true', help='Create plots using phi coordinates')
+    parser.add_argument('--performance', action='store_true', help='Create performance plots: distance gen_particle/max_TC')
+    parser.add_argument('--thr_seed',    action='store_true', help='Create efficiency plots post seeding')
     args = parser.parse_args()
 
     params = tool.define_map()
@@ -56,12 +57,12 @@ if __name__ == '__main__':
       # print('Processing event {}. (\u03B7, \u03C6) = {:.2f}, {:.2f}. pT = {:.2f} GeV'.format(
       #       event.event, event.eta_gen, event.phi_gen, event.pT_gen))
 
-      if (event.pT_gen<10): continue
+      if (event.pT_gen < 10): continue
       event._data_packer(args, xml_data, shift_pre)
       for thr_b in params['thresholdMaximaParam_b']:
         for thr_a in params['thresholdMaximaParam_a']:
           config.setThresholdMaximaConstants(params['cRows'], thr_a, thr_b, 0)
           run_algorithm(config, event, args, shift_post, seeds[thr_b])
-        
+
     if args.performance: plot.produce_plots(shift_pre, shift_post)
     if args.thr_seed: plot.plot_seeds(seeds, args)

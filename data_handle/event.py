@@ -82,7 +82,7 @@ class EventData():
                 value_energy, code_energy = compress_value(mod_energy[tc_idx]/LSB)
                 value_r_z = int(mod_r_over_z[tc_idx]/LSB_r_z) & 0xFFF # 12 bits
                 value_phi = int((mod_phi[tc_idx]-offset_phi)/LSB_phi) & 0xFFF # 12 bits
-   
+  
                 if args.plot:
                     data_heatmap.append({
                         'rOverZ': value_r_z,

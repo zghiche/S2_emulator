@@ -68,44 +68,41 @@ def produce_plots(shift_pre, shift_post):
                  [p_t[2] for p_t in shift_post])
 
 def define_bin(r_z, phi=0):
-    return int((r_z-440)/64)-1, int(124*phi/3.14)-1
+    return int((r_z-440)/64)-1, 23+int(124*phi/np.pi)-1
 
 def distance(tc, gen):
-    r_z_bin, phi_bin = bin2coord(tc.sortKey()-1+0.5, -23+tc.index()-1+0.5)
+    r_z_bin, phi_bin = bin2coord(tc.sortKey()-1+0.5, tc.index()-1+0.5)
     eta_bin = -np.log(np.tan((r_z_bin*0.7)/(4096*2)))
     return np.sqrt((eta_bin-gen.eta_gen)**2+(phi_bin-gen.phi_gen)**2)
 
 def bin2coord(r_z_bin, phi_bin):
-    return 64*(r_z_bin+1)+440, np.pi*(phi_bin+1)/124
+    return 64*(r_z_bin+1)+440, np.pi*(phi_bin+1-23)/124
 
 def calculate_shift(heatmap, ev):
     max_bin = np.unravel_index(np.argmax(heatmap), heatmap.shape)
     max_r_z, max_phi = bin2coord(max_bin[0]+0.5, max_bin[1]+0.5)
     r_over_z = np.tan(2*np.arctan(np.exp(-ev.eta_gen)))
     return [r_over_z-max_r_z*0.7/4096, 
-            ev.phi_gen - max_phi+0.3 ,
+            ev.phi_gen - max_phi,
             np.sum(heatmap)/ev.pT_gen]
 
 def create_plot_py(objects, ev, args):
     heatmap = np.zeros((64, 124))
 
     for bin in objects: # min col = -23 from S2.ChannelAllocation.xml
-        if args.col: heatmap[define_bin(bin['rOverZ'])[0], 23+bin['column']] += bin['energy']/10000
-        else: heatmap[define_bin(bin['rOverZ'], (np.pi/1944)*bin['phi'])] += bin['energy']/10000
+        if args.phi: heatmap[define_bin(bin['rOverZ'], (np.pi/1944)*bin['phi']-0.3)] += bin['energy']/10000
+        elif args.col: heatmap[define_bin(bin['rOverZ'])[0], 23+bin['column']] += bin['energy']/10000
 
     if args.performance: return calculate_shift(heatmap, ev) 
-    step = 'columns_pre_unpacking' if args.col else 'pre_unpacking'
-    create_heatmap(heatmap, step, ev.event)
+    elif args.col or args.phi: create_heatmap(heatmap, 'columns_pre_unpacking' if args.col else 'pre_unpacking', ev)
 
 def create_plot(objects, step, ev, args):
-    heatmap = np.zeros((64, 124))
+    heatmap, seed = np.zeros((64, 124)), 0
 
-    seed = 0
-    # r_z, phi, z = [], [], []
     for bin in objects:
       if (step=='post_unpacking') and (bin.energy()>0):
-        if args.col:  heatmap[define_bin(bin.rOverZ())[0], bin.index()] += bin.energy()/10000
-        else: heatmap[define_bin(bin.rOverZ(), (np.pi/1944)*bin.phi())] += bin.energy()/10000
+        if args.phi: heatmap[define_bin(bin.rOverZ(), (np.pi/1944)*bin.phi()-0.3)] += bin.energy()/10000
+        elif args.col: heatmap[define_bin(bin.rOverZ())[0], bin.index()] += bin.energy()/10000
         # print("Energy", bin.energy(), "R/Z", int((bin.rOverZ()-440)/64), "Column", bin.index())
 
       if (step=='post_seeding') and (bin.S()>0):
@@ -118,9 +115,8 @@ def create_plot(objects, step, ev, args):
         print(f'3 seeds found for event {ev.event}, (pT, \u03B7, \u03C6)=({ev.pT_gen:.0f}, {ev.eta_gen:.2f},{ev.phi_gen:.2f})') 
         create_heatmap(heatmap, step, ev)
     if args.performance: return calculate_shift(heatmap, ev)
+    elif args.col or args.phi: create_heatmap(heatmap, 'columns_'+step if (args.col and step!='post_seeding') else step, ev)
     if args.thr_seed: return [seed, ev.eta_gen, ev.pT_gen]
-    if args.col: step = 'columns_' + step
-    create_heatmap(heatmap, step, ev)
 
 def create_heatmap(heatmap, title, gen):
     plt.imshow(heatmap, cmap='viridis', origin='lower', aspect='auto')
@@ -131,11 +127,12 @@ def create_heatmap(heatmap, title, gen):
     plt.colorbar(label='Transverse Energy [GeV]')
     plt.xlabel('\u03C6 (degrees)')
     plt.ylabel('r/z')
-    plt.scatter([23+(gen.phi_gen)*84/(2*np.pi/3)-1], [((4096/0.7)*np.tan(2*np.arctan(np.exp(-gen.eta_gen)))-440)/64-1], 
+    plt.scatter([23+int(124*gen.phi_gen/np.pi)-1], [((4096/0.7)*np.tan(2*np.arctan(np.exp(-gen.eta_gen)))-440)/64-1], 
                 color='red', marker='x', s=50)
-    plt.title(f'{title} - {gen.event}, (pT, \u03B7, \u03C6)=({gen.pT_gen:.0f} GeV,{gen.eta_gen:.2f},{gen.phi_gen:.2f})'.replace('_', ' '))
+    plt.title(f'{title} - Event {gen.event} \n pT:{gen.pT_gen:.0f} GeV, \u03B7:{gen.eta_gen:.2f}, \u03C6:{gen.phi_gen:.2f}'.replace('_', ' '))
 
-    plt.savefig(f'plots/{gen.event}_{title}.pdf')
+    plt.savefig(f'plots/single_events/{gen.event}_{title}.pdf')
+    plt.savefig(f'plots/single_events/{gen.event}_{title}.png')
     plt.clf()
 
 def create_histo(data, variable, title, data2=None, data3=None):
@@ -156,4 +153,5 @@ def create_histo(data, variable, title, data2=None, data3=None):
     plt.ylabel('Counts')
     plt.title('Histogram '+ title + ' ' + xlabel)
     plt.savefig('plots/histogram_'+ variable + '_' + title +'.pdf')
+    plt.savefig('plots/histogram_'+ variable + '_' + title +'.png')
     plt.clf()
