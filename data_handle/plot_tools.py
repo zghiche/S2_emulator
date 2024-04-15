@@ -50,9 +50,9 @@ def create_plot(objects, step, ev, args):
         if (bin.maximaOffset() == cfg['fanoutWidths'][bin.sortKey()]) and \
            (distance(bin, ev) < 10): seed.append([bin.sortKey()-1, bin.index()-1])    
  
-    # if (len(seed) == 3): 
-    #     print(f'3 seeds found for event {ev.event}, (pT, \u03B7, \u03C6)=({ev.pT_gen:.0f}, {ev.eta_gen:.2f},{ev.phi_gen:.2f})') 
-    #     create_heatmap(heatmap, step, ev, seed)
+    if (len(seed) == 2): 
+        print(f'2 seeds found for event {ev.event}, (pT, \u03B7, \u03C6)=({ev.pT_gen:.0f}, {ev.eta_gen:.2f},{ev.phi_gen:.2f})') 
+        create_heatmap(heatmap, step, ev, seed)
     if args.performance: return calculate_shift(heatmap, ev)
     elif args.col or args.phi: create_heatmap(heatmap, 'columns_'+step if (args.col and step!='post_seeding') else step, ev, seed)
     if args.thr_seed: return [len(seed), ev.eta_gen, ev.pT_gen]
@@ -71,7 +71,7 @@ def create_heatmap(heatmap, title, gen, seeds=[]):
     plt.imshow(np.vstack((np.zeros((1, 124)), heatmap)), cmap='viridis', origin='lower', aspect='auto')
     x_tick_labels = [int(val) for val in np.linspace(-30, 150, num=7)]
     y_tick_labels = ['{:.2f}'.format(val) for val in np.linspace(440*0.7/4096, (64**2+440)*0.7/4096, num=8)]
-    plt.xticks(np.linspace(1, 124, num=7), labels=x_tick_labels)
+    plt.xticks(np.linspace(0, 123, num=7), labels=x_tick_labels)
     plt.yticks(np.linspace(1, 64,  num=8), labels=y_tick_labels)
     plt.colorbar(label='Transverse Energy [GeV]')
     plt.xlabel('\u03C6 (degrees)')
@@ -129,7 +129,7 @@ def compute_efficiency_plots(seeds, variable, thr, bin_n=10):
       """k is number of successes, n is number of trials"""
       bin_indices = np.where(indices == index)[0]
       seeds_bin = [seeds[i] for i in bin_indices]
-      k, n = sum(1 for x in seeds_bin if x >= 2), len(seeds_bin)
+      k, n = sum(1 for x in seeds_bin if x >= 1), len(seeds_bin)
       if n == 0: eff[index], lo_err[index], up_err[index] = 0, 0, 0; continue
 
       result = binomtest(k, n, p=k/n)
@@ -150,6 +150,7 @@ def produce_efficiency_plots(variable, thr_b, args):
     thresholds = '_a'+'_'.join(map(str, [int(i/1000) for i in cfg['thresholdMaximaParam_a']]))+ \
                  '_b'+str(thr_b)+'_c'+str(cfg['thresholdMaximaParam_c'])
     plt.savefig('plots/histogram_seed_vs_'+variable+thresholds+'.pdf')
+    plt.savefig('plots/histogram_seed_vs_'+variable+thresholds+'.png')
     plt.clf()
 
 def plot_seeds(seeds, args):
@@ -160,7 +161,7 @@ def plot_seeds(seeds, args):
           seeds_list.append([seed[0] for idx, seed in enumerate(seeds[thr_b]) if idx%n_params == index])
           eta_list.append([eta[1] for idx, eta in enumerate(seeds[thr_b]) if idx%n_params == index])
           p_t_list.append([p_t[2] for idx, p_t in enumerate(seeds[thr_b]) if idx%n_params == index])
-          thr_list.append('a:'+str(thr/10000)+'GeV b:'+str(thr_b))
+          thr_list.append('a:'+str(thr/10000)+' GeV b:'+str(thr_b))
       
       plt.hist(seeds_list, bins=4, label=thr_list) 
       produce_efficiency_plots('thr', thr_b, args)
