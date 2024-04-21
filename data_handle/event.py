@@ -108,7 +108,7 @@ class EventData():
 
             # assigning each TCs to a columns
             xml_alloc = sorted(xml_alloc, key=lambda x: x['column'])
-
+            
             for tc_idx, TC_xml in enumerate(xml_alloc):
                 if tc_idx > len(mod_energy)-1: break
                 n_link = TC_xml['n_link']
