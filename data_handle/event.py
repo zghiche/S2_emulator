@@ -7,6 +7,50 @@ from cppyy.gbl import l1thgcfirmware, std
 
 import data_handle.plot_tools as plot
 from data_handle.tools import compress_value
+        
+cppyy.cppdef("""
+#import "L1Trigger/L1THGCal/interface/backend_emulator/HGCalLinkTriggerCell_SA.h"
+void Fill_Links(std::vector<std::unique_ptr<l1thgcfirmware::HGCalLinkTriggerCell>>& LinksInData, std::map<int, std::vector<long int>>& data_links) {
+for (int link_frame = 0; link_frame < 84 * 108; ++link_frame) {
+    LinksInData.push_back(std::make_unique<l1thgcfirmware::HGCalLinkTriggerCell>());
+    if (data_links.find(link_frame) != data_links.end()) {
+        LinksInData.back()->data_     = data_links[link_frame][0];
+        LinksInData.back()->r_over_z_ = data_links[link_frame][1];
+        LinksInData.back()->phi_      = data_links[link_frame][2];
+    }
+};
+}""")
+
+cppyy.cppdef("""
+std::vector<long int> create_link(const std::map<int, std::vector<long int>>& data_in) {
+    int64_t energy = 0, r_over_z = 0, phi = 0;
+    std::cout << energy << std::endl;
+    for (const auto& pair : data_in) {
+        int channel = pair.first;
+        energy   = energy | (pair.second[0] << (channel*15));
+        std::cout << energy << std::endl;
+        r_over_z = r_over_z | (pair.second[1] << (channel*15));
+        phi      = phi | (pair.second[2] << (channel*15));
+    }
+    return {energy, r_over_z, phi};
+}
+
+std::map<int, std::vector<long int>> pack_Links(std::map<int, std::map<int, std::map<int, std::vector<long int>>>>& data_TCs) {
+std::map<int, std::vector<long int>> data_links;
+// Iterate over data_TCs
+for (const auto& frame_pair : data_TCs) {
+    int frame = frame_pair.first;
+    for (const auto& n_link_pair : frame_pair.second) {
+        int n_link = n_link_pair.first;
+        // Create link data
+        // std::cout << n_link_pair.first << std::endl;
+        std::vector<long int> link_data = create_link(n_link_pair.second);
+        // Insert into data_links
+        data_links[84 * frame + n_link] = link_data;
+    }
+}
+return data_links;}""")
+
 import time
 
 class EventData():
@@ -38,21 +82,20 @@ class EventData():
     def get_TC_allocation(self, xml_data, module):
         return xml_data[module]
     
-    def create_link(self, data_in):
-        energy   = (data_in[2][0] << 30) | (data_in[1][0] << 15) | (data_in[0][0])
-        r_over_z = (data_in[2][1] << 30) | (data_in[1][1] << 15) | (data_in[0][1])
-        phi      = (data_in[2][2] << 30) | (data_in[1][2] << 15) | (data_in[0][2])
-        return [energy, r_over_z, phi]
-   
+#     def create_link(self, data_in):
+#         energy   = (data_in[2][0] << 30) | (data_in[1][0] << 15) | (data_in[0][0])
+#         r_over_z = (data_in[2][1] << 30) | (data_in[1][1] << 15) | (data_in[0][1])
+#         phi      = (data_in[2][2] << 30) | (data_in[1][2] << 15) | (data_in[0][2])
+#         return [energy, r_over_z, phi]
      
     def _process_event(self, args, xml, shift):
         LSB = 1/10000 # 100 keV
         LSB_r_z = 0.7/4096
         LSB_phi = np.pi/1944
         offset_phi = -0.3
-        data_TCs = {}
+        data_TCs = std.map[int,std.map[int,std.map[int,'std::vector<long int>']]]()
 
-        if args.plot: data_heatmap = []
+        # if args.plot: data_heatmap = []
         for module_idx in range(len(self.ds_TCs.good_tc_x)):
             module = self.get_module_id(self.ds_TCs.good_tc_layer[module_idx][0],
                                         self.ds_TCs.good_tc_waferu[module_idx][0],
@@ -69,56 +112,70 @@ class EventData():
             mod_energy = self.ds_TCs.good_tc_pt[module_idx][:n_TCs+1][ak.argsort(mod_phi)]
             mod_r_over_z = self.ds_TCs.r_over_z[module_idx][:n_TCs+1][ak.argsort(mod_phi)]
             mod_phi = ak.sort(mod_phi)
-  
+
+            # assigning each TCs to a columns
+            xml_alloc = sorted(xml_alloc, key=lambda x: x['column'])
+
             for tc_idx, TC_xml in enumerate(xml_alloc):
                 if tc_idx > len(mod_energy)-1: break
                 n_link = TC_xml['n_link']
     
-                if TC_xml['frame'] not in data_TCs.keys():
-                    data_TCs[TC_xml['frame']] = {}
-                if n_link not in data_TCs[TC_xml['frame']].keys():
-                    data_TCs[TC_xml['frame']][n_link] = [[0]*3]*3
+                # if TC_xml['frame'] not in data_TCs.keys():
+                #     data_TCs[TC_xml['frame']] = {}
+                # if n_link not in data_TCs[TC_xml['frame']].keys():
+                #     data_TCs[TC_xml['frame']][n_link] = [[0]*3]*3
     
                 value_energy, code_energy = compress_value(mod_energy[tc_idx]/LSB)
                 value_r_z = int(mod_r_over_z[tc_idx]/LSB_r_z) & 0xFFF # 12 bits
                 value_phi = int((mod_phi[tc_idx]-offset_phi)/LSB_phi) & 0xFFF # 12 bits
   
-                if args.plot:
-                    data_heatmap.append({
-                        'rOverZ': value_r_z,
-                        'phi'   : value_phi,
-                        'column': columns[tc_idx],
-                        'energy': value_energy
-                    })
+                # if args.plot:
+                #     data_heatmap.append({
+                #         'rOverZ': value_r_z,
+                #         'phi'   : value_phi,
+                #         'column': columns[tc_idx],
+                #         'energy': value_energy
+                #     })
     
-                data_TCs[TC_xml['frame']][n_link][TC_xml['channel']%3] = [
+                data_TCs[TC_xml['frame']][n_link][TC_xml['channel']%3] = {
                     code_energy, value_r_z, value_phi
-                    ]
-   
-        if args.plot: shift.append(plot.create_plot_py(data_heatmap, self, args))
+                    }
+  
+        # if args.plot: shift.append(plot.create_plot_py(data_heatmap, self, args))
         return data_TCs
     
     def _data_packer(self, args, xml, shift):
         data_TCs = self._process_event(args, xml, shift)
 
+        print(data_TCs)
+        data_links = cppyy.gbl.pack_Links(data_TCs)
         # packing data in links 
-        data_links = {}
-        for frame in data_TCs.keys():
-            for n_link in data_TCs[frame].keys():
-                link_data = self.create_link(data_TCs[frame][n_link])
-                data_links[84*frame+n_link] = link_data
+#         data_links = std.map[int, 'std::vector<long int>']()
+#         for frame in data_TCs.keys():
+#             for n_link in data_TCs[frame].keys():
+#                 link_data = self.create_link(data_TCs[frame][n_link])
+#                 data_links[84*frame+n_link] = link_data
 
         # filling data into emulator c++ variables
-        HGCalLinkTriggerCell = l1thgcfirmware.HGCalLinkTriggerCell
-        LinksInData = std.vector['std::unique_ptr<l1thgcfirmware::HGCalLinkTriggerCell>']()
+        LinksInData = std.vector['std::unique_ptr<l1thgcfirmware::HGCalLinkTriggerCell>']() 
+        cppyy.gbl.Fill_Links(LinksInData, data_links) 
 
-        # number of links = NChannels*Nframes
-        for link_frame in range(84*108):
-            LinksInData.push_back(std.make_unique[HGCalLinkTriggerCell]())
-            if link_frame in data_links.keys():
-                LinksInData[-1].data_     = data_links[link_frame][0]
-                LinksInData[-1].r_over_z_ = data_links[link_frame][1]
-                LinksInData[-1].phi_      = data_links[link_frame][2]
+        # # filling data into emulator c++ variables
+        # data_links = {}
+        # for frame in data_TCs.keys():
+        #     for n_link in data_TCs[frame].keys():
+        #         link_data = self.create_link(data_TCs[frame][n_link])
+        #         data_links[84*frame+n_link] = link_data
+        # HGCalLinkTriggerCell = l1thgcfirmware.HGCalLinkTriggerCell
+        # LinksInData = std.vector['std::unique_ptr<l1thgcfirmware::HGCalLinkTriggerCell>']() 
+        # 
+        # # number of links = NChannels*Nframes
+        # for link_frame in range(84*108):
+        #     LinksInData.push_back(std.make_unique[HGCalLinkTriggerCell]())
+        #     if link_frame in data_links.keys():
+        #         LinksInData[-1].data_     = data_links[link_frame][0]
+        #         LinksInData[-1].r_over_z_ = data_links[link_frame][1]
+        #         LinksInData[-1].phi_      = data_links[link_frame][2]
 
         self.data_packer = LinksInData
 
