@@ -10,7 +10,8 @@ from data_handle.tools import compress_value
         
 cppyy.cppdef("""
 #import "L1Trigger/L1THGCal/interface/backend_emulator/HGCalLinkTriggerCell_SA.h"
-void Fill_Links(std::vector<std::unique_ptr<l1thgcfirmware::HGCalLinkTriggerCell>>& LinksInData, std::map<int, std::vector<long int>>& data_links) {
+std::vector<std::unique_ptr<l1thgcfirmware::HGCalLinkTriggerCell>> fill_Links(std::map<int, std::vector<long int>>& data_links) {
+std::vector<std::unique_ptr<l1thgcfirmware::HGCalLinkTriggerCell>> LinksInData;
 for (int link_frame = 0; link_frame < 84 * 108; ++link_frame) {
     LinksInData.push_back(std::make_unique<l1thgcfirmware::HGCalLinkTriggerCell>());
     if (data_links.find(link_frame) != data_links.end()) {
@@ -19,16 +20,15 @@ for (int link_frame = 0; link_frame < 84 * 108; ++link_frame) {
         LinksInData.back()->phi_      = data_links[link_frame][2];
     }
 };
+return LinksInData;
 }""")
 
 cppyy.cppdef("""
 std::vector<long int> create_link(const std::map<int, std::vector<long int>>& data_in) {
     int64_t energy = 0, r_over_z = 0, phi = 0;
-    std::cout << energy << std::endl;
     for (const auto& pair : data_in) {
         int channel = pair.first;
         energy   = energy | (pair.second[0] << (channel*15));
-        std::cout << energy << std::endl;
         r_over_z = r_over_z | (pair.second[1] << (channel*15));
         phi      = phi | (pair.second[2] << (channel*15));
     }
@@ -49,9 +49,8 @@ for (const auto& frame_pair : data_TCs) {
         data_links[84 * frame + n_link] = link_data;
     }
 }
-return data_links;}""")
-
-import time
+return data_links;
+}""")
 
 class EventData():
     def __init__(self, ds_TCs, gen):
@@ -81,12 +80,6 @@ class EventData():
     
     def get_TC_allocation(self, xml_data, module):
         return xml_data[module]
-    
-#     def create_link(self, data_in):
-#         energy   = (data_in[2][0] << 30) | (data_in[1][0] << 15) | (data_in[0][0])
-#         r_over_z = (data_in[2][1] << 30) | (data_in[1][1] << 15) | (data_in[0][1])
-#         phi      = (data_in[2][2] << 30) | (data_in[1][2] << 15) | (data_in[0][2])
-#         return [energy, r_over_z, phi]
      
     def _process_event(self, args, xml, shift):
         LSB = 1/10000 # 100 keV
@@ -120,15 +113,9 @@ class EventData():
                 if tc_idx > len(mod_energy)-1: break
                 n_link = TC_xml['n_link']
     
-                # if TC_xml['frame'] not in data_TCs.keys():
-                #     data_TCs[TC_xml['frame']] = {}
-                # if n_link not in data_TCs[TC_xml['frame']].keys():
-                #     data_TCs[TC_xml['frame']][n_link] = [[0]*3]*3
-    
                 value_energy, code_energy = compress_value(mod_energy[tc_idx]/LSB)
                 value_r_z = int(mod_r_over_z[tc_idx]/LSB_r_z) & 0xFFF # 12 bits
                 value_phi = int((mod_phi[tc_idx]-offset_phi)/LSB_phi) & 0xFFF # 12 bits
-  
                 # if args.plot:
                 #     data_heatmap.append({
                 #         'rOverZ': value_r_z,
@@ -136,48 +123,20 @@ class EventData():
                 #         'column': columns[tc_idx],
                 #         'energy': value_energy
                 #     })
-    
-                data_TCs[TC_xml['frame']][n_link][TC_xml['channel']%3] = {
+
+                data_TCs[TC_xml['frame']][n_link][TC_xml['channel']%3] = [ 
                     code_energy, value_r_z, value_phi
-                    }
-  
+                    ]
+
         # if args.plot: shift.append(plot.create_plot_py(data_heatmap, self, args))
         return data_TCs
     
     def _data_packer(self, args, xml, shift):
         data_TCs = self._process_event(args, xml, shift)
-
-        print(data_TCs)
         data_links = cppyy.gbl.pack_Links(data_TCs)
-        # packing data in links 
-#         data_links = std.map[int, 'std::vector<long int>']()
-#         for frame in data_TCs.keys():
-#             for n_link in data_TCs[frame].keys():
-#                 link_data = self.create_link(data_TCs[frame][n_link])
-#                 data_links[84*frame+n_link] = link_data
 
         # filling data into emulator c++ variables
-        LinksInData = std.vector['std::unique_ptr<l1thgcfirmware::HGCalLinkTriggerCell>']() 
-        cppyy.gbl.Fill_Links(LinksInData, data_links) 
-
-        # # filling data into emulator c++ variables
-        # data_links = {}
-        # for frame in data_TCs.keys():
-        #     for n_link in data_TCs[frame].keys():
-        #         link_data = self.create_link(data_TCs[frame][n_link])
-        #         data_links[84*frame+n_link] = link_data
-        # HGCalLinkTriggerCell = l1thgcfirmware.HGCalLinkTriggerCell
-        # LinksInData = std.vector['std::unique_ptr<l1thgcfirmware::HGCalLinkTriggerCell>']() 
-        # 
-        # # number of links = NChannels*Nframes
-        # for link_frame in range(84*108):
-        #     LinksInData.push_back(std.make_unique[HGCalLinkTriggerCell]())
-        #     if link_frame in data_links.keys():
-        #         LinksInData[-1].data_     = data_links[link_frame][0]
-        #         LinksInData[-1].r_over_z_ = data_links[link_frame][1]
-        #         LinksInData[-1].phi_      = data_links[link_frame][2]
-
-        self.data_packer = LinksInData
+        self.data_packer = cppyy.gbl.fill_Links(data_links) 
 
 
 #######################################################################################
