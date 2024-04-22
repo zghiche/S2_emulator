@@ -6,7 +6,7 @@ import cppyy
 from cppyy.gbl import l1thgcfirmware, std
 
 import data_handle.plot_tools as plot
-from data_handle.tools import compress_value
+from data_handle.tools import compress_value, printProgressBar
         
 cppyy.cppdef("""
 #import "L1Trigger/L1THGCal/interface/backend_emulator/HGCalLinkTriggerCell_SA.h"
@@ -63,6 +63,10 @@ class EventData():
                              gen.good_genpart_energy[0])
 
         self.data_packer = None
+        self.LSB = 1/10000 # 100 keV
+        self.LSB_r_z = 0.7/4096
+        self.LSB_phi = np.pi/1944
+        self.offset_phi = -0.3
 
     def _compute_pt(self, eta, energy):
         return energy/np.cosh(eta)
@@ -82,10 +86,6 @@ class EventData():
         return xml_data[module]
      
     def _process_event(self, args, xml, shift):
-        LSB = 1/10000 # 100 keV
-        LSB_r_z = 0.7/4096
-        LSB_phi = np.pi/1944
-        offset_phi = -0.3
         data_TCs = std.map[int,std.map[int,std.map[int,'std::vector<long int>']]]()
 
         # if args.plot: data_heatmap = []
@@ -113,9 +113,9 @@ class EventData():
                 if tc_idx > len(mod_energy)-1: break
                 n_link = TC_xml['n_link']
     
-                value_energy, code_energy = compress_value(mod_energy[tc_idx]/LSB)
-                value_r_z = int(mod_r_over_z[tc_idx]/LSB_r_z) & 0xFFF # 12 bits
-                value_phi = int((mod_phi[tc_idx]-offset_phi)/LSB_phi) & 0xFFF # 12 bits
+                value_energy, code_energy = compress_value(mod_energy[tc_idx]/self.LSB)
+                value_r_z = int(mod_r_over_z[tc_idx]/self.LSB_r_z) & 0xFFF # 12 bits
+                value_phi = int((mod_phi[tc_idx]-self.offset_phi)/self.LSB_phi) & 0xFFF # 12 bits
                 # if args.plot:
                 #     data_heatmap.append({
                 #         'rOverZ': value_r_z,
@@ -187,8 +187,10 @@ def provide_events(n=1):
 
     tree  = uproot.open(filepath)[name_tree]
     events_ds = []
+    printProgressBar(0, n, prefix='Reading '+str(n)+' events from ROOT file:', suffix='Complete', length=50)
     for ev in range(n):
-        data = tree.arrays(branches_tc, entry_start=ev, entry_stop=ev+1, library='ak')
-        data_gen = tree.arrays(branches_gen, entry_start=ev, entry_stop=ev+1, library='ak')[0]
-        events_ds.append(provide_event(data, data_gen))
+      data = tree.arrays(branches_tc, entry_start=ev, entry_stop=ev+1, library='ak')
+      data_gen = tree.arrays(branches_gen, entry_start=ev, entry_stop=ev+1, library='ak')[0]
+      events_ds.append(provide_event(data, data_gen))
+      printProgressBar(ev+1, n, prefix='Reading '+str(n)+' events from ROOT file:', suffix='Complete', length=50)
     return events_ds

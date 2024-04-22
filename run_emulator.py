@@ -61,7 +61,7 @@ if __name__ == '__main__':
       event._data_packer(args, xml_data, shift_pre)
       for thr_b in params['thresholdMaximaParam_b']:
         for thr_a in params['thresholdMaximaParam_a']:
-          config.setThresholdMaximaConstants(params['cRows'], thr_a, thr_b, 0)
+          config.setThresholdMaximaConstants(params['cRows'], int(thr_a/event.LSB), int(thr_b/event.LSB), 0)
           run_algorithm(config, event, args, shift_post, seeds[thr_b])
 
     if args.performance: plot.produce_plots(shift_pre, shift_post)

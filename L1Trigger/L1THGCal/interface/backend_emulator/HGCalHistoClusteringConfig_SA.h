@@ -53,7 +53,7 @@ namespace l1thgcfirmware {
     ClusterAlgoConfig(unsigned int cClocks, unsigned int cInputs, unsigned int cInputs2, unsigned int cInt, unsigned int cColumns, unsigned int cRows,
                       unsigned int rOverZHistOffset, unsigned int rOverZBinSize, const std::vector<unsigned int>& kernelWidths,
                       const std::vector<unsigned int>& areaNormalizations,
-                      const std::vector<int>& thresholdMaximaParam_a, const std::vector<unsigned int>& thresholdMaximaParam_b, int thresholdMaximaParam_c,
+                      const std::vector<float>& thresholdMaximaParam_a, const std::vector<float>& thresholdMaximaParam_b, int thresholdMaximaParam_c,
                       const std::vector<int>& maximaWidths, const std::vector<int>& fanoutWidths,
                       const std::vector<unsigned int>& cosLUT, unsigned int clusterizerMagicTime,
                       const std::map<Step,unsigned int>& stepLatency,
