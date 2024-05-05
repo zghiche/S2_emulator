@@ -23,42 +23,42 @@ void HGCalHistoClustering::runClustering(HGCalTriggerCellSAPtrCollection& trigge
   clusterTree(clustersOut);
 }
 
-// unsigned int Dist( const HGCalTriggerCellSAPtr& TC , const HGCalHistogramCellSAPtr& Maxima , const ClusterAlgoConfig& Config )
-// { 
-//   if ( ( TC == nullptr ) or ( Maxima == nullptr ) ) return UINT_MAX;
-//   
-//   // -------------------------------------------------
-//   // Cartesian for comparison
-//   // double tc_phi = TC->phi_ * (2.0*M_PI/3.0) / 4096;
-//   // double tc_x = TC->rOverZ_ * std::cos( tc_phi );
-//   // double tc_y = TC->rOverZ_ * std::sin( tc_phi );
-// 
-//   // double hc_phi = Maxima->X_ * (2.0*M_PI/3.0) / 4096;
-//   // double hc_x = Maxima->Y_ * std::cos( hc_phi );
-//   // double hc_y = Maxima->Y_ * std::sin( hc_phi );
-//   //      
-//   // double dx = tc_x - hc_x;
-//   // double dy = tc_y - hc_y;
-//   //            
-//   // double dr2 = ( dx * dx ) + ( dy * dy );
-//   // -------------------------------------------------
-//                             
-//   // -------------------------------------------------
-//   unsigned int r1 = TC->rOverZ_;
-//   unsigned int r2 = Maxima->Y_;
-//   int dR = r1 - r2;
-//   int dPhi = TC->phi_ - Maxima->X_;
-//   unsigned int dR2 = dR * dR;
-//   const int maxbin = Config.nBinsCosLUT()-1;
-//   unsigned int cosTerm = ( abs(dPhi) > maxbin ) ? Config.cosLUT( maxbin ) : Config.cosLUT( abs(dPhi) ); // stored in 10 bit
-//   int correction = ( ( ( r1 * r2 ) >> 1 ) * cosTerm ) >> 17;
-//   dR2 += correction;
-//         
-//   // std::cout << ( dR2 - dr2 ) << " : " << correction << std::endl;
-//   // -------------------------------------------------
-// 
-//   return dR2;
-// }
+double Dist( const HGCalTriggerCellSAPtr& TC , const HGCalHistogramCellSAPtr& Maxima )
+{ 
+  if ( ( TC == nullptr ) or ( Maxima == nullptr ) ) return UINT_MAX;
+  
+  // -------------------------------------------------
+  // Cartesian for comparison
+  double tc_phi = TC->phi_ * M_PI/1944;
+  double tc_x = TC->rOverZ_ * std::cos( tc_phi );
+  double tc_y = TC->rOverZ_ * std::sin( tc_phi );
+
+  double hc_phi = Maxima->X_ * M_PI/1944; // (2.0*M_PI/3.0) / 4096;
+  double hc_x = Maxima->Y_ * std::cos( hc_phi );
+  double hc_y = Maxima->Y_ * std::sin( hc_phi );
+       
+  double dx = tc_x - hc_x;
+  double dy = tc_y - hc_y;
+             
+  double dr2 = ( dx * dx ) + ( dy * dy );
+  // -------------------------------------------------
+                            
+  // -------------------------------------------------
+  // unsigned int r1 = TC->rOverZ_;
+  // unsigned int r2 = Maxima->Y_;
+  // int dR = r1 - r2;
+  // int dPhi = TC->phi_ - Maxima->X_;
+  // unsigned int dR2 = dR * dR;
+  // const int maxbin = Config.nBinsCosLUT()-1;
+  // unsigned int cosTerm = ( abs(dPhi) > maxbin ) ? Config.cosLUT( maxbin ) : Config.cosLUT( abs(dPhi) ); // stored in 10 bit
+  // int correction = ( ( ( r1 * r2 ) >> 1 ) * cosTerm ) >> 17;
+  // dR2 += correction;
+        
+  // std::cout << ( dR2 - dr2 ) << " : " << correction << std::endl;
+  // -------------------------------------------------
+
+  return dr2;
+}
 
 void HGCalHistoClustering::clusterizer( HGCalTriggerCellSAPtrCollection& triggerCells, HGCalHistogramCellSAPtrCollection& histogram, HGCalTriggerCellSAPtrCollection& triggerCellsRamOut, HGCalHistogramCellSAPtrCollection& maximaFifoOut ) const
 {
@@ -125,20 +125,19 @@ void HGCalHistoClustering::clusterizer( HGCalTriggerCellSAPtrCollection& trigger
       tcx->setLastFrame( false ); //(frame==215);
 
       // std::cout << col.Current->S_ << std::endl;
-      // unsigned int CurrentdR2Cut(5000); // Magic numbers
-      // unsigned int CurrentDist = Dist( tc , col.Current , config_ );
-      // if( CurrentDist < CurrentdR2Cut )
-      // {
-      //   HGCalHistogramCellSAPtr hc = std::make_shared< HGCalHistogramCell > ( *col.Current );
-      //   hc->clock_ = frame + 289 + 20;    
-      //   histogramOut.emplace_back( hc );        
+      unsigned int CurrentdR2Cut(5000); // Magic numbers
+      double CurrentDist = Dist( tc , col.Current );
+      // std::cout << CurrentDist << std::endl;
+      if( CurrentDist < CurrentdR2Cut )
+      {
+        HGCalHistogramCellSAPtr hc = std::make_unique< HGCalHistogramCell > ( *col.Current );
+        hc->clock_ = frame + 289 + 20;    
+        histogramOut.emplace_back( hc );        
 
-      //   tc->clock_ = frame + 289 + 20; 
-      //   tc->sortKey_ = hc->sortKey_;        
-      //   triggerCellsOut.push_back( tc );
-      // }
-
-      
+        tc->clock_ = frame + 289 + 20; 
+        tc->sortKey_ = hc->sortKey_;        
+        // triggerCellsOut.push_back( tc );
+      }
     }
   }
   triggerCells = move(triggerCellsOut);

@@ -1,21 +1,32 @@
 import matplotlib.pyplot as plt
+from matplotlib.colors import LinearSegmentedColormap
 from scipy.stats import binomtest
 import numpy as np
 import yaml
+
+white_viridis = LinearSegmentedColormap.from_list('white_viridis', [
+    (0,    '#ffffff'),
+    (1e-10,'#440053'),
+    (0.2,  '#404388'),
+    (0.4,  '#2a788e'),
+    (0.6,  '#21a784'),
+    (0.8,  '#78d151'),
+    (1,    '#fde624'),
+], N=1000)
 
 with open('config.yaml', "r") as afile:
     cfg = yaml.safe_load(afile)
 
 def distance(tc, gen):
-    r_z_bin, phi_bin = bin2coord(tc.sortKey()-1+0.5, tc.index()-1+0.5)
+    r_z_bin, phi_bin = bin2coord(tc.sortKey()+0.5, tc.index()+0.5)
     eta_bin = -np.log(np.tan((r_z_bin*gen.LSB_r_z)/2))
     return np.sqrt((eta_bin-gen.eta_gen)**2+(phi_bin-gen.phi_gen)**2)
 
 def define_bin(r_z, phi=0):
-    return int((r_z-440)/64)-1, 23+int(124*phi/np.pi)-1
+    return int((r_z-440)/64), 23+int(124*phi/np.pi)
 
 def bin2coord(r_z_bin, phi_bin):
-    return 64*(r_z_bin+1)+440, np.pi*(phi_bin+1-23)/124
+    return 64*(r_z_bin)+440, np.pi*(phi_bin-23)/124
 
 def calculate_shift(heatmap, ev):
     max_bin = np.unravel_index(np.argmax(heatmap), heatmap.shape)
@@ -24,16 +35,6 @@ def calculate_shift(heatmap, ev):
     return [r_over_z-max_r_z*ev.LSB_r_z, 
             ev.phi_gen - max_phi,
             np.sum(heatmap)/ev.pT_gen]
-
-def create_plot_py(objects, ev, args):
-    heatmap = np.zeros((64, 124))
-
-    for bin in objects: # min col = -23 from S2.ChannelAllocation.xml
-        if args.phi: heatmap[define_bin(bin['rOverZ'], ev.LSB_phi*bin['phi']+ev.offset_phi)] += bin['energy']*ev.LSB
-        elif args.col: heatmap[define_bin(bin['rOverZ'])[0], 23+bin['column']] += bin['energy']*ev.LSB
-
-    if args.performance: return calculate_shift(heatmap, ev) 
-    elif args.col or args.phi: create_heatmap(heatmap, 'columns_pre_unpacking' if args.col else 'pre_unpacking', ev)
 
 def create_plot(objects, step, ev, args):
     heatmap, seed = np.zeros((64, 124)), []
@@ -45,12 +46,11 @@ def create_plot(objects, step, ev, args):
         # print("Energy", bin.energy(), "R/Z", int((bin.rOverZ()-440)/64), "Column", bin.index())
 
       if (step=='post_seeding') and (bin.S()>0):
-        heatmap[bin.sortKey()-1, bin.index()-1] += (bin.S())*ev.LSB
+        heatmap[bin.sortKey(), bin.index()] += (bin.S())*ev.LSB
         # print("Smeared Energy : ", bin.S(), "R/Z bin", bin.sortKey(), "col", bin.index())
-        if (bin.maximaOffset() == cfg['fanoutWidths'][bin.sortKey()]) and \
-           (distance(bin, ev) < 10): seed.append([bin.sortKey()-1, bin.index()-1])    
- 
-    if (len(seed) == 3): 
+        if bin.maximaOffset() == cfg['fanoutWidths'][bin.sortKey()]: seed.append([bin.sortKey(), bin.index()])    
+
+    if len(seed) == 3 and distance(bin, ev) < 10:
         print(f'3 seeds found for event {ev.event}, (pT, \u03B7, \u03C6)=({ev.pT_gen:.0f}, {ev.eta_gen:.2f},{ev.phi_gen:.2f})') 
         create_heatmap(heatmap, step, ev, seed)
     if args.performance: return calculate_shift(heatmap, ev)
@@ -68,7 +68,7 @@ def hgcal_limits(ev):
     plt.text(3, ((0.076-0.02)/ev.LSB_r_z-440)/64, 'Layer27', color='red', fontsize=6)
 
 def create_heatmap(heatmap, title, gen, seeds=[]):
-    plt.imshow(np.vstack((np.zeros((1, 124)), heatmap)), cmap='viridis', origin='lower', aspect='auto')
+    plt.imshow(np.vstack((np.zeros((1, 124)), heatmap)), cmap=white_viridis, origin='lower', aspect='auto')
     x_tick_labels = [int(val) for val in np.linspace(-30, 150, num=7)]
     y_tick_labels = ['{:.2f}'.format(val) for val in np.linspace(440*gen.LSB_r_z, (64**2+440)*gen.LSB_r_z, num=8)]
     plt.xticks(np.linspace(0, 123, num=7), labels=x_tick_labels)
@@ -76,10 +76,11 @@ def create_heatmap(heatmap, title, gen, seeds=[]):
     plt.colorbar(label='Transverse Energy [GeV]')
     plt.xlabel('\u03C6 (degrees)')
     plt.ylabel('r/z')
-    plt.scatter([23+int(124*gen.phi_gen/np.pi)-1], [(np.tan(2*np.arctan(np.exp(-gen.eta_gen)))/gen.LSB_r_z-440)/64], 
+    plt.scatter(0,0, color='green', marker='x', s=50)
+    plt.scatter([23+int(124*gen.phi_gen/np.pi)], [1+(np.tan(2*np.arctan(np.exp(-gen.eta_gen)))/gen.LSB_r_z-440)/64], 
                 color='red', marker='x', s=50)
     for seed in seeds:
-      plt.scatter([seed[1]], [seed[0]+1], color='white', marker='o', s=20)
+      plt.scatter([seed[1]], [1+seed[0]], color='white', marker='o', s=20)
     plt.title(f'{title} - Event {gen.event} \n pT:{gen.pT_gen:.0f} GeV, \u03B7:{gen.eta_gen:.2f}, \u03C6:{gen.phi_gen:.2f}'.replace('_', ' '))
     plt.grid(linestyle='--')
     hgcal_limits(gen)
@@ -173,4 +174,15 @@ def plot_seeds(seeds, args):
       for thr in range(len(thr_list)):
           compute_efficiency_plots(seeds_list[thr], eta_list[thr], thr_list[thr], 5)
       produce_efficiency_plots('eta', thr_b, args)
+
+## not used ##
+def create_plot_py(objects, ev, args):
+    heatmap = np.zeros((64, 124))
+
+    for bin in objects: # min col = -23 from S2.ChannelAllocation.xml
+        if args.phi: heatmap[define_bin(bin['rOverZ'], ev.LSB_phi*bin['phi']+ev.offset_phi)] += bin['energy']*ev.LSB
+        elif args.col: heatmap[define_bin(bin['rOverZ'])[0], 23+bin['column']] += bin['energy']*ev.LSB
+
+    if args.performance: return calculate_shift(heatmap, ev) 
+    elif args.col or args.phi: create_heatmap(heatmap, 'columns_pre_unpacking' if args.col else 'pre_unpacking', ev)
 
