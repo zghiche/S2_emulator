@@ -68,7 +68,7 @@ def hgcal_limits(ev):
     plt.text(3, ((0.076-0.02)/ev.LSB_r_z-440)/64, 'Layer27', color='red', fontsize=6)
 
 def create_heatmap(heatmap, title, gen, seeds=[]):
-    plt.imshow(np.vstack((np.zeros((1, 124)), heatmap)), cmap=white_viridis, origin='lower', aspect='auto')
+    plt.imshow(heatmap, cmap=white_viridis, origin='lower', aspect='auto')
     x_tick_labels = [int(val) for val in np.linspace(-30, 150, num=7)]
     y_tick_labels = ['{:.2f}'.format(val) for val in np.linspace(440*gen.LSB_r_z, (64**2+440)*gen.LSB_r_z, num=8)]
     plt.xticks(np.linspace(0, 123, num=7), labels=x_tick_labels)
@@ -76,11 +76,10 @@ def create_heatmap(heatmap, title, gen, seeds=[]):
     plt.colorbar(label='Transverse Energy [GeV]')
     plt.xlabel('\u03C6 (degrees)')
     plt.ylabel('r/z')
-    plt.scatter(0,0, color='green', marker='x', s=50)
-    plt.scatter([23+int(124*gen.phi_gen/np.pi)], [1+(np.tan(2*np.arctan(np.exp(-gen.eta_gen)))/gen.LSB_r_z-440)/64], 
+    plt.scatter(23+int(124*gen.phi_gen/np.pi), (np.tan(2*np.arctan(np.exp(-gen.eta_gen)))/gen.LSB_r_z-440)/64, 
                 color='red', marker='x', s=50)
     for seed in seeds:
-      plt.scatter([seed[1]], [1+seed[0]], color='white', marker='o', s=20)
+      plt.scatter(seed[1], seed[0], color='white', marker='o', s=20)
     plt.title(f'{title} - Event {gen.event} \n pT:{gen.pT_gen:.0f} GeV, \u03B7:{gen.eta_gen:.2f}, \u03C6:{gen.phi_gen:.2f}'.replace('_', ' '))
     plt.grid(linestyle='--')
     hgcal_limits(gen)
