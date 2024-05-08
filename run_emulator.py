@@ -11,6 +11,7 @@ import data_handle.tools as tool
 import data_handle.plot_tools as plot
 from   data_handle.event import provide_events
 import data_handle.geometry as geometry
+import time
 
 def run_algorithm(config, event, args, shift, seed):
     ''' Calling the emulator algorithm in all its steps '''
@@ -42,6 +43,8 @@ if __name__ == '__main__':
     parser.add_argument('--phi',         action='store_true', help='Create plots using phi coordinates')
     parser.add_argument('--performance', action='store_true', help='Create performance plots: distance gen_particle/max_TC')
     parser.add_argument('--thr_seed',    action='store_true', help='Create efficiency plots post seeding')
+    parser.add_argument('--particles', type=str, default='photons', help='Choose the particle sample')
+    parser.add_argument('--pileup',    type=str, default='PU0',     help='Choose the pileup - 0PU or 200PU')
     args = parser.parse_args()
 
     params = tool.define_map()
@@ -50,16 +53,18 @@ if __name__ == '__main__':
     shift_pre, shift_post = [], []
     seeds = {thr_b: [] for thr_b in params['thresholdMaximaParam_b']}
  
-    events = provide_events(args.n)
+    events = provide_events(args.n, args.particles, args.pileup)
     xml_data = geometry.read_xml()
     xml_MB = geometry.MB_geometry()
     for idx, event in enumerate(events):
       if idx % 50 == 0: print('Processing event', idx)
       # print('Processing event {}. (\u03B7, \u03C6) = {:.2f}, {:.2f}. pT = {:.2f} GeV'.format(
-      #      event.event, event.eta_gen, event.phi_gen, event.pT_gen))
+      #        event.event, event.eta_gen, event.phi_gen, event.pT_gen))
 
       if (event.pT_gen < 10): continue
+      start = time.time()
       event._data_packer(args, xml_data, xml_MB)
+      print(time.time()-start)
       for thr_b in params['thresholdMaximaParam_b']:
         for thr_a in params['thresholdMaximaParam_a']:
           config.setThresholdMaximaConstants(params['cRows'], int(thr_a/event.LSB), int(thr_b/event.LSB), 0)

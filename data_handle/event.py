@@ -2,6 +2,7 @@ import numpy as np
 import awkward as ak
 import uproot
 import math
+import yaml
 import cppyy
 from cppyy.gbl import l1thgcfirmware, std
 
@@ -66,7 +67,7 @@ class EventData():
         self.LSB = 1/10000 # 100 keV
         self.LSB_r_z = 0.7/4096
         self.LSB_phi = np.pi/1944
-        self.offset_phi = -0.5
+        self.offset_phi = -0.8
 
     def _compute_pt(self, eta, energy):
         return energy/np.cosh(eta)
@@ -124,13 +125,11 @@ class EventData():
             if xml_alloc: self._process_module(self.ds_si, module_idx, xml_alloc, data_TCs)
 
         for MB_idx in range(len(self.ds_sci.good_tc_layer)):
-            if self.ds_sci.MB_v[MB_idx][0] > 11: continue
-            if self.ds_sci.good_tc_layer[MB_idx][0] > 47: continue
             MB = self.get_MB_id(self.ds_sci.good_tc_layer[MB_idx][0],
                                 self.ds_sci.MB_v[MB_idx][0], MB_conv)
             xml_alloc = self.get_TC_allocation(xml[1], MB)
-            if xml_alloc: 
-                self._process_module(self.ds_sci, MB_idx, xml_alloc, data_TCs)
+            if xml_alloc: self._process_module(self.ds_sci, MB_idx, xml_alloc, data_TCs)
+            else: print(self.ds_sci.good_tc_layer[MB_idx][0], self.ds_sci.MB_v[MB_idx][0], MB)
         return data_TCs
     
     def _data_packer(self, args, xml, xml_MB):
@@ -145,6 +144,9 @@ class EventData():
 ############################### PROVIDE EVENTS ########################################
 #######################################################################################
 
+with open('config.yaml', "r") as afile:
+    cfg_particles = yaml.safe_load(afile)["particles"]
+
 def apply_sort(df, counts, axis):
     for field in df.fields:
         df[field] = ak.unflatten(df[field], counts, axis)
@@ -152,12 +154,16 @@ def apply_sort(df, counts, axis):
 
 def provide_event(ev, gen):
     ev['r_over_z'] = np.sqrt(ev.good_tc_x**2 + ev.good_tc_y**2)/ev.good_tc_z
-    ev['MB_v'] = np.floor(ev.good_tc_cellv/4)
-    ev = ev[[x for x in ak.fields(ev) if not x in ["good_tc_x","good_tc_y","good_tc_z","good_tc_cellv"]]]
+    ev['MB_v'] = np.floor((ev.good_tc_cellv-1)/4)
+    ev = ev[[x for x in ak.fields(ev) if not x in ["good_tc_x","good_tc_y","good_tc_z"]]]
     
     # dividing silicon and scintillators
     sci = ev[ev['good_tc_subdet'] == 10]
     si  = ev[ev['good_tc_subdet'] != 10]
+    
+    # selecting first 120 sector only
+    si  = si[(si['good_tc_waferv']-si['good_tc_waferu']>0) & (si['good_tc_waferv']>=0)]
+    sci = sci[sci['good_tc_cellv']<=48]
 
     # sorting by modules  
     sorted_waferu = si[ak.argsort(si['good_tc_waferu'])]
@@ -192,12 +198,10 @@ def provide_event(ev, gen):
 
     return EventData(sorted_si, sorted_sci, gen)
 
-def provide_events(n=1):
-    # filepath = '/data_CMS/cms/mchiusi/ntupleProduction/DoublePhoton_FlatPt-1To100_PU200/DoublePhoton_FlatPt-1To100_PU200_TC_STC_STC.root'
-    # name_tree = 'l1tHGCalTriggerNtuplizer/HGCalTriggerNtuple'
-    # filepath = '/data_CMS/cms/mchiusi/L1HGCAL/skim_photons_emulator_02to18phi_new.root'
-    filepath = '/data_CMS/cms/mchiusi/L1HGCAL/skim_pions_emulator_02to18phi_200PU.root'
-    name_tree = "FloatingpointMixedbcstcrealsig4DummyHistomaxxydr015GenmatchGenclustersntuple/HGCalTriggerNtuple"
+def provide_events(n, particles, PU):
+    base_path = '/data_CMS/cms/mchiusi/ntupleProduction/'
+    name_tree = cfg_particles[PU][particles]["tree"]
+    filepath  = base_path + cfg_particles[PU][particles]["file"]
 
     branches_tc = [
         'good_tc_x', 'good_tc_y', 'good_tc_z',
@@ -210,7 +214,7 @@ def provide_events(n=1):
         'event', 'good_genpart_exeta', 'good_genpart_exphi', 'good_genpart_energy'
     ]
 
-    tree  = uproot.open(filepath)[name_tree]
+    tree = uproot.open(filepath)[name_tree]
     events_ds = []
     printProgressBar(0, n, prefix='Reading '+str(n)+' events from ROOT file:', suffix='Complete', length=50)
     for ev in range(n):

@@ -15,7 +15,7 @@ white_viridis = LinearSegmentedColormap.from_list('white_viridis', [
 ], N=1000)
 
 with open('config.yaml', "r") as afile:
-    cfg = yaml.safe_load(afile)
+    cfg = yaml.safe_load(afile)["s2emu_config"]
 
 def distance(tc, gen):
     r_z_bin, phi_bin = bin2coord(tc.sortKey()+0.5, tc.index()+0.5)

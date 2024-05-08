@@ -33,7 +33,7 @@ def compress_value(value, exponent_bits=4, mantissa_bits=3, truncation_bits=0):
 def define_map():
     # reading the yaml file
     with open('config.yaml', "r") as afile:
-      params = yaml.safe_load(afile)
+      params = yaml.safe_load(afile)["s2emu_config"]
 
     enum = cppyy.gbl.l1thgcfirmware.Step
     map_custom = std.map[enum, "unsigned int"]()
@@ -50,6 +50,5 @@ def printProgressBar(iteration, total, prefix = '', suffix = '', decimals = 1, l
     filledLength = int(length * iteration // total)
     bar = fill * filledLength + '-' * (length - filledLength)
     print(f'\r{prefix} |{bar}| {percent}% {suffix}', end = printEnd)
-    # Print New Line on Complete
     if iteration == total: 
         print()

@@ -51,9 +51,9 @@ def MB_geometry():
             motherboard_id = motherboard.attrib['id']
             
             for module in motherboard.findall('Module'):
-                tc_count = module.attrib.get('TCcount')
-                if tc_count is None: continue
+                vertices = module.attrib.get('Vertices')
+                if len(vertices.split(";")) > 4: break
                 result_dict.setdefault(plane_id, {}).setdefault(int(module.attrib['v']), motherboard_id)
-                break    
+                break
 
     return result_dict
