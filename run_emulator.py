@@ -11,7 +11,6 @@ import data_handle.tools as tool
 import data_handle.plot_tools as plot
 from   data_handle.event import provide_events
 import data_handle.geometry as geometry
-import time
 
 def run_algorithm(config, event, args, shift, seed):
     ''' Calling the emulator algorithm in all its steps '''
@@ -26,7 +25,7 @@ def run_algorithm(config, event, args, shift, seed):
 
     histogram = l1thgcfirmware.HGCalHistogramCellSAPtrCollection()
     seeding_.runSeeding(unpackedTCs, histogram)
-    if args.plot and not args.performance: shift.append(plot.create_plot(histogram, 'post_seeding', event, args))
+    if args.plot and not args.performance: plot.create_plot(histogram, 'post_seeding', event, args)
     if args.thr_seed: seed.append(plot.create_plot(histogram, 'post_seeding', event, args))
 
     clusters = l1thgcfirmware.HGCalClusterSAPtrCollection()
@@ -34,7 +33,7 @@ def run_algorithm(config, event, args, shift, seed):
     
 
 if __name__ == '__main__':
-    ''' python run_emulator.py --plot -n 2 '''
+    ''' python run_emulator.py -n 2 --pileup PU0 --particles photons '''
 
     parser = argparse.ArgumentParser(description='Stage-2 Emulator Parameters')
     parser.add_argument('-n', type=int, default=1, help='Provide the number of events')
@@ -50,7 +49,7 @@ if __name__ == '__main__':
     params = tool.define_map()
     config = l1thgcfirmware.ClusterAlgoConfig(**params)
 
-    shift_pre, shift_post = [], []
+    shift_post = []
     seeds = {thr_b: [] for thr_b in params['thresholdMaximaParam_b']}
  
     events = provide_events(args.n, args.particles, args.pileup)
@@ -62,13 +61,11 @@ if __name__ == '__main__':
       #        event.event, event.eta_gen, event.phi_gen, event.pT_gen))
 
       if (event.pT_gen < 10): continue
-      start = time.time()
       event._data_packer(args, xml_data, xml_MB)
-      print(time.time()-start)
       for thr_b in params['thresholdMaximaParam_b']:
         for thr_a in params['thresholdMaximaParam_a']:
           config.setThresholdMaximaConstants(params['cRows'], int(thr_a/event.LSB), int(thr_b/event.LSB), 0)
           run_algorithm(config, event, args, shift_post, seeds[thr_b])
 
-    if args.performance: plot.produce_plots(shift_pre, shift_post)
+    if args.performance: plot.produce_plots(shift_post)
     if args.thr_seed: plot.plot_seeds(seeds, args)

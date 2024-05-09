@@ -87,24 +87,18 @@ def create_heatmap(heatmap, title, gen, seeds=[]):
     plt.savefig(f'plots/single_events/{gen.event}_{title}.png')
     plt.clf()
 
-def produce_plots(shift_pre, shift_post):
-    create_histo([r_z[0] for r_z in shift_pre], 'r_z', 'pre_post_unpacking',
-                 [r_z[0] for r_z in shift_post])
-    create_histo([phi[1] for phi in shift_pre], 'phi', 'pre_post_unpacking',
-                 [phi[1] for phi in shift_post])
-    create_histo([p_t[2] for p_t in shift_pre], 'p_t', 'pre_post_unpacking',
-                 [p_t[2] for p_t in shift_post])
+def produce_plots(shift):
+    create_histo([r_z[0] for r_z in shift], 'r_z', 'post_unpacking')
+    create_histo([phi[1] for phi in shift], 'phi', 'post_unpacking')
+    create_histo([p_t[2] for p_t in shift], 'p_t', 'post_unpacking')
 
-def create_histo(data, variable, title, data2=None, data3=None):
+def create_histo(data, variable, title):
     if variable == 'p_t':
-        plt.hist(data,  bins=25, alpha=0.5, label='pre unpacking')
-        plt.hist(data2, bins=25, alpha=0.5, label='post unpacking')
+        plt.hist(data,  bins=25, alpha=0.5, label='post unpacking')
     if variable == 'r_z': 
-        plt.hist(data, bins=25, range=(-0.01,0.01), alpha=0.5, label='pre unpacking')
-        plt.hist(data2, bins=25, range=(-0.01,0.01), alpha=0.5, label='post unpacking')
+        plt.hist(data, bins=25, range=(-0.01,0.01), alpha=0.5, label='post unpacking')
     if variable == 'phi': 
-        plt.hist(data, bins=25, alpha=0.5, label='columns pre')
-        plt.hist(data2, bins=25, alpha=0.5, label='columns post')
+        plt.hist(data, bins=25, alpha=0.5, label='columns post')
     plt.legend()
     xlabel = (r'$\phi_{bin}^{max energy} - \phi_{gen particle}$' if variable == 'phi' else
           r'$\frac{r}{z}_{bin}^{max energy} - \frac{r}{z}_{gen particle}$' if variable == 'r_z' else

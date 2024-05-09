@@ -129,7 +129,6 @@ class EventData():
                                 self.ds_sci.MB_v[MB_idx][0], MB_conv)
             xml_alloc = self.get_TC_allocation(xml[1], MB)
             if xml_alloc: self._process_module(self.ds_sci, MB_idx, xml_alloc, data_TCs)
-            else: print(self.ds_sci.good_tc_layer[MB_idx][0], self.ds_sci.MB_v[MB_idx][0], MB)
         return data_TCs
     
     def _data_packer(self, args, xml, xml_MB):
@@ -199,7 +198,7 @@ def provide_event(ev, gen):
     return EventData(sorted_si, sorted_sci, gen)
 
 def provide_events(n, particles, PU):
-    base_path = '/data_CMS/cms/mchiusi/ntupleProduction/'
+    base_path = '/eos/home-m/mchiusi/s2_emulator/'
     name_tree = cfg_particles[PU][particles]["tree"]
     filepath  = base_path + cfg_particles[PU][particles]["file"]
 

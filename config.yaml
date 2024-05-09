@@ -49,7 +49,7 @@ s2emu_config:
 particles:
   PU0:
     photons:
-      tree: l1tHGCalTriggerNtuplizer/HGCalTriggerNtuple
+      tree: FloatingpointMixedbcstcrealsig4DummyHistomaxxydr015GenmatchGenclustersntuple/HGCalTriggerNtuple
       file: skim_photons_emulator_02to18phi_new.root
     pions:
       tree: l1tHGCalTriggerNtuplizer/HGCalTriggerNtuple
