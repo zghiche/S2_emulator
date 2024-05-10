@@ -50,7 +50,7 @@ def create_plot(objects, step, ev, args):
         # print("Smeared Energy : ", bin.S(), "R/Z bin", bin.sortKey(), "col", bin.index())
         if bin.maximaOffset() == cfg['fanoutWidths'][bin.sortKey()]: seed.append([bin.sortKey(), bin.index()])    
 
-    if len(seed) == 3 and distance(bin, ev) < 10:
+    if len(seed) == 3 and args.pileup == 'PU0': # and distance(bin, ev) < 10:
         print(f'3 seeds found for event {ev.event}, (pT, \u03B7, \u03C6)=({ev.pT_gen:.0f}, {ev.eta_gen:.2f},{ev.phi_gen:.2f})') 
         create_heatmap(heatmap, step, ev, seed)
     if args.performance: return calculate_shift(heatmap, ev)

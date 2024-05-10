@@ -57,8 +57,8 @@ if __name__ == '__main__':
     xml_MB = geometry.MB_geometry()
     for idx, event in enumerate(events):
       if idx % 50 == 0: print('Processing event', idx)
-      # print('Processing event {}. (\u03B7, \u03C6) = {:.2f}, {:.2f}. pT = {:.2f} GeV'.format(
-      #        event.event, event.eta_gen, event.phi_gen, event.pT_gen))
+      if args.n <= 20: print('Processing event {}. (\u03B7, \u03C6) = {:.2f}, {:.2f}. pT = {:.2f} GeV'.format(
+                              event.event, event.eta_gen, event.phi_gen, event.pT_gen))
 
       if (event.pT_gen < 10): continue
       event._data_packer(args, xml_data, xml_MB)
