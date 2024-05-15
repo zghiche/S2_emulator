@@ -23,41 +23,41 @@ void HGCalHistoClustering::runClustering(HGCalTriggerCellSAPtrCollection& trigge
   clusterTree(clustersOut);
 }
 
-double Dist( const HGCalTriggerCellSAPtr& TC , const HGCalHistogramCellSAPtr& Maxima )
+double Dist( const HGCalTriggerCellSAPtr& TC , const HGCalHistogramCellSAPtr& Maxima, const ClusterAlgoConfig& Config )
 { 
   if ( ( TC == nullptr ) or ( Maxima == nullptr ) ) return UINT_MAX;
   
   // -------------------------------------------------
   // Cartesian for comparison
-  double tc_phi = TC->phi_ * M_PI/1944;
-  double tc_x = TC->rOverZ_ * std::cos( tc_phi );
-  double tc_y = TC->rOverZ_ * std::sin( tc_phi );
+  // double tc_phi = TC->phi_ * M_PI/1944;
+  // double tc_x = TC->rOverZ_ * std::cos( tc_phi );
+  // double tc_y = TC->rOverZ_ * std::sin( tc_phi );
 
-  double hc_phi = Maxima->X_ * M_PI/1944; // (2.0*M_PI/3.0) / 4096;
-  double hc_x = Maxima->Y_ * std::cos( hc_phi );
-  double hc_y = Maxima->Y_ * std::sin( hc_phi );
-       
-  double dx = tc_x - hc_x;
-  double dy = tc_y - hc_y;
-             
-  double dr2 = ( dx * dx ) + ( dy * dy );
+  // double hc_phi = Maxima->X_ * M_PI/1944; // (2.0*M_PI/3.0) / 4096;
+  // double hc_x = Maxima->Y_ * std::cos( hc_phi );
+  // double hc_y = Maxima->Y_ * std::sin( hc_phi );
+  //      
+  // double dx = tc_x - hc_x;
+  // double dy = tc_y - hc_y;
+  //            
+  // double dr2 = ( dx * dx ) + ( dy * dy );
   // -------------------------------------------------
                             
   // -------------------------------------------------
-  // unsigned int r1 = TC->rOverZ_;
-  // unsigned int r2 = Maxima->Y_;
-  // int dR = r1 - r2;
-  // int dPhi = TC->phi_ - Maxima->X_;
-  // unsigned int dR2 = dR * dR;
-  // const int maxbin = Config.nBinsCosLUT()-1;
-  // unsigned int cosTerm = ( abs(dPhi) > maxbin ) ? Config.cosLUT( maxbin ) : Config.cosLUT( abs(dPhi) ); // stored in 10 bit
-  // int correction = ( ( ( r1 * r2 ) >> 1 ) * cosTerm ) >> 17;
-  // dR2 += correction;
+  unsigned int r1 = TC->rOverZ_;
+  unsigned int r2 = Maxima->Y_;
+  int dR = r1 - r2;
+  int dPhi = TC->phi_ - Maxima->X_;
+  unsigned int dR2 = dR * dR;
+  const int maxbin = Config.nBinsCosLUT()-1;
+  unsigned int cosTerm = ( abs(dPhi) > maxbin ) ? Config.cosLUT( maxbin ) : Config.cosLUT( abs(dPhi) ); // stored in 10 bit
+  int correction = ( ( ( r1 * r2 ) >> 1 ) * cosTerm ) >> 17;
+  dR2 += correction;
         
   // std::cout << ( dR2 - dr2 ) << " : " << correction << std::endl;
   // -------------------------------------------------
 
-  return dr2;
+  return dR2;
 }
 
 void HGCalHistoClustering::clusterizer( HGCalTriggerCellSAPtrCollection& triggerCells, HGCalHistogramCellSAPtrCollection& histogram, HGCalTriggerCellSAPtrCollection& triggerCellsRamOut, HGCalHistogramCellSAPtrCollection& maximaFifoOut ) const
@@ -126,7 +126,7 @@ void HGCalHistoClustering::clusterizer( HGCalTriggerCellSAPtrCollection& trigger
 
       // std::cout << col.Current->S_ << std::endl;
       unsigned int CurrentdR2Cut(5000); // Magic numbers
-      double CurrentDist = Dist( tc , col.Current );
+      double CurrentDist = Dist( tc , col.Current, config_ );
       // std::cout << CurrentDist << std::endl;
       if( CurrentDist < CurrentdR2Cut )
       {
@@ -136,7 +136,7 @@ void HGCalHistoClustering::clusterizer( HGCalTriggerCellSAPtrCollection& trigger
 
         tc->clock_ = frame + 289 + 20; 
         tc->sortKey_ = hc->sortKey_;        
-        // triggerCellsOut.push_back( tc );
+        triggerCellsOut.push_back( move(tc) );
       }
     }
   }
@@ -195,8 +195,9 @@ void HGCalHistoClustering::triggerCellToCluster(const HGCalTriggerCellSAPtrColle
         cluster->set_n_tc(1);
         cluster->set_n_tc_w(1);
 
-        cluster->set_e((config_.layerWeight_E(triggerLayer) == 1) ? tc->energy() : 0);
-        cluster->set_e_h_early((config_.layerWeight_E_H_early(triggerLayer) == 1) ? tc->energy() : 0);
+        // std::cout << tc->layer() << " " << triggerLayer << std::endl;
+        cluster->set_e((config_.layerWeight_E( tc->layer() ) == 1) ? tc->energy() : 0);
+        cluster->set_e_h_early((config_.layerWeight_E_H_early( tc->layer() ) == 1) ? tc->energy() : 0);
 
         cluster->set_e_em(s_E_EM);
         cluster->set_e_em_core(s_E_EM_core);
@@ -256,6 +257,7 @@ void HGCalHistoClustering::clusterAccumulator( HGCalClusterSAPtrCollection& clus
  
   std::sort( output.begin() , output.end() , []( const HGCalClusterSAShrPtr& a , const HGCalClusterSAShrPtr& b ){ return std::make_pair( a->clock_ , a->index_ ) < std::make_pair( b->clock_ , b->index_ ); } );
 
+  clusters.clear();
   clusters.reserve(output.size());
   for (auto& sharedPtr : output) {
       clusters.push_back(std::make_unique<HGCalCluster>(*sharedPtr));
@@ -265,7 +267,6 @@ void HGCalHistoClustering::clusterAccumulator( HGCalClusterSAPtrCollection& clus
 void HGCalHistoClustering::clusterTree( HGCalClusterSAPtrCollection& clusters ) const
 {
   HGCalClusterSAShrPtrCollection output;
-
 
   // vvvvvvvvvvvvvvvvvv HACK TO VERIFY VALUES
   std::map< std::pair< int , int > , HGCalClusterSAShrPtr > cluster_map;
@@ -306,6 +307,7 @@ void HGCalHistoClustering::clusterTree( HGCalClusterSAPtrCollection& clusters ) 
 
   std::sort( output.begin() , output.end() , []( const HGCalClusterSAShrPtr& a , const HGCalClusterSAShrPtr& b ){ return std::make_pair( a->clock_ , a->index_ ) < std::make_pair( b->clock_ , b->index_ ); } );
 
+  clusters.clear();
   clusters.reserve(output.size());
   for (auto& sharedPtr : output) {
       clusters.push_back(std::make_unique<HGCalCluster>(*sharedPtr));
