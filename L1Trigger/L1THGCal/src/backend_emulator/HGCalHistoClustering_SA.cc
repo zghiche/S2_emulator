@@ -4,6 +4,7 @@
 #include <cmath>
 #include <algorithm>
 #include <memory>
+#include <unordered_map>
 
 using namespace std;
 using namespace l1thgcfirmware;
@@ -27,23 +28,6 @@ double Dist( const HGCalTriggerCellSAPtr& TC , const HGCalHistogramCellSAPtr& Ma
 { 
   if ( ( TC == nullptr ) or ( Maxima == nullptr ) ) return UINT_MAX;
   
-  // -------------------------------------------------
-  // Cartesian for comparison
-  // double tc_phi = TC->phi_ * M_PI/1944;
-  // double tc_x = TC->rOverZ_ * std::cos( tc_phi );
-  // double tc_y = TC->rOverZ_ * std::sin( tc_phi );
-
-  // double hc_phi = Maxima->X_ * M_PI/1944; // (2.0*M_PI/3.0) / 4096;
-  // double hc_x = Maxima->Y_ * std::cos( hc_phi );
-  // double hc_y = Maxima->Y_ * std::sin( hc_phi );
-  //      
-  // double dx = tc_x - hc_x;
-  // double dy = tc_y - hc_y;
-  //            
-  // double dr2 = ( dx * dx ) + ( dy * dy );
-  // -------------------------------------------------
-                            
-  // -------------------------------------------------
   unsigned int r1 = TC->rOverZ_;
   unsigned int r2 = Maxima->Y_;
   int dR = r1 - r2;
@@ -54,9 +38,6 @@ double Dist( const HGCalTriggerCellSAPtr& TC , const HGCalHistogramCellSAPtr& Ma
   int correction = ( ( ( r1 * r2 ) >> 1 ) * cosTerm ) >> 17;
   dR2 += correction;
         
-  // std::cout << ( dR2 - dr2 ) << " : " << correction << std::endl;
-  // -------------------------------------------------
-
   return dR2;
 }
 
@@ -64,19 +45,26 @@ void HGCalHistoClustering::clusterizer( HGCalTriggerCellSAPtrCollection& trigger
 {
   std::array< ClusterizerColumn , 124 > lColumns;
 
+  // std::cout << "Inital number of TCs " << triggerCells.size() << std::endl;
+  std::unordered_map<int, int> TC_counter;
+
   // Map the TCs into the RAM using the LUT
   auto start = triggerCells.front()->clock();
   for( auto& tc : triggerCells ){
     auto frame = tc->clock() - start;
+    TC_counter[tc->index()] += 1;
+    frame = TC_counter[tc->index()]%216;
     auto& lut_out = config_.TriggerCellAddressLUT( ( 216*tc->index() ) + frame );
     lColumns.at( tc->index() ).MappedTCs.at( lut_out ) = std::move(tc);
+    // lColumns.at( tc->index() ).MappedTCs.at( TC_counter[tc->index()] ) = std::move(tc);
   }
   triggerCells.clear();
   
   // Map the maxima into the FIFO
   for( auto& i : histogram ){
-    if( i->maximaOffset_>0 or i->left_ or i->right_ ) lColumns.at( i->index_ ).MaximaFifo.push_back( i );      
-    // if( i->maximaOffset_>0 or i->left_ or i->right_ ) std::cout << "Max found. R/Z: " << i->sortKey_ << " Column " << i->index_ << std::endl; 
+    if( i->maximaOffset_>0 or i->left_ or i->right_ ) {
+      lColumns.at( i->index_ ).MaximaFifo.push_back( i );
+    } 
   }
   histogram.clear();
 
@@ -86,12 +74,12 @@ void HGCalHistoClustering::clusterizer( HGCalTriggerCellSAPtrCollection& trigger
   HGCalTriggerCellSAPtrCollection triggerCellsOut;
   HGCalHistogramCellSAPtrCollection histogramOut;
 
-  // Read the tcs out sequentially
+  //Read the tcs out sequentially
   for ( unsigned int frame = 0; frame != 216; ++frame ) {  
     for ( unsigned int iColumn = 0; iColumn != config_.cColumns(); ++iColumn ) {      
       auto& col = lColumns.at( iColumn );
       auto& tc = col.MappedTCs.at( frame );
-                                                        
+      
       // Get the maxima from the FIFO  //  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< STILL TRYING TO EMULATE HOW THE FIRMWARE DOES THIS!
       if( col.counter < 0 )
       {
@@ -106,11 +94,9 @@ void HGCalHistoClustering::clusterizer( HGCalTriggerCellSAPtrCollection& trigger
         if( col.counter >= 0 ) col.counter--;
       }
 
-
       if ( col.Current != nullptr )
       {
-        // std::cout << col.Current; 
-        // std::cout << "Analysing column " << col.Current->index_ << "Max " << col.Current->sortKey_ << std::endl;
+        // std::cout << col.Current << std::endl; 
         maximaFifoOut.push_back( std::make_unique< HGCalHistogramCell >( *col.Current ) );
         auto& hcx = maximaFifoOut.back();
         hcx->clock_ = frame + 289 + 16;
@@ -118,16 +104,15 @@ void HGCalHistoClustering::clusterizer( HGCalTriggerCellSAPtrCollection& trigger
     
       // Compare the TC against the maxima
       if( tc == nullptr ) continue;
-      
-      triggerCellsRamOut.push_back( std::make_unique< HGCalTriggerCell >( *tc ) );
-      auto& tcx = triggerCellsRamOut.back();
-      tcx->setClock( frame + 289 + 20 );
-      tcx->setLastFrame( false ); //(frame==215);
+     
+      // triggerCellsRamOut.push_back( std::make_unique< HGCalTriggerCell >( *tc ) );
+      // auto& tcx = triggerCellsRamOut.back();
+      // tcx->setClock( frame + 289 + 20 );
+      // tcx->setLastFrame( false ); //(frame==215);
 
-      // std::cout << col.Current->S_ << std::endl;
       unsigned int CurrentdR2Cut(5000); // Magic numbers
       double CurrentDist = Dist( tc , col.Current, config_ );
-      // std::cout << CurrentDist << std::endl;
+      // std::cout << col.Current << " Column " << iColumn << " Frame " << frame << " CurrentDist " << CurrentDist << std::endl;
       if( CurrentDist < CurrentdR2Cut )
       {
         HGCalHistogramCellSAPtr hc = std::make_unique< HGCalHistogramCell > ( *col.Current );
@@ -141,6 +126,7 @@ void HGCalHistoClustering::clusterizer( HGCalTriggerCellSAPtrCollection& trigger
     }
   }
   triggerCells = move(triggerCellsOut);
+  // std::cout << "Clusterised TCs " << triggerCells.size() << std::endl;
   histogram = move(histogramOut);
 }
 

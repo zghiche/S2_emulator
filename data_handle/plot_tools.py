@@ -17,11 +17,6 @@ white_viridis = LinearSegmentedColormap.from_list('white_viridis', [
 with open('config.yaml', "r") as afile:
     cfg = yaml.safe_load(afile)["s2emu_config"]
 
-def distance(tc, gen):
-    r_z_bin, phi_bin = bin2coord(tc.sortKey()+0.5, tc.index()+0.5)
-    eta_bin = -np.log(np.tan((r_z_bin*gen.LSB_r_z)/2))
-    return np.sqrt((eta_bin-gen.eta_gen)**2+(phi_bin-gen.phi_gen)**2)
-
 def define_bin(r_z, phi=0):
     return int((r_z-440)/64), 23+int(124*phi/np.pi)
 
@@ -36,7 +31,7 @@ def calculate_shift(heatmap, ev):
             ev.phi_gen - max_phi,
             np.sum(heatmap)/ev.pT_gen]
 
-def create_plot(objects, step, ev, args):
+def create_plot(objects, step, ev, args, clusters=[]):
     heatmap, seed = np.zeros((64, 124)), []
 
     for bin in objects:
@@ -45,17 +40,24 @@ def create_plot(objects, step, ev, args):
         elif args.col: heatmap[define_bin(bin.rOverZ())[0], bin.index()] += bin.energy()*ev.LSB
         # print("Energy", bin.energy(), "R/Z", int((bin.rOverZ()-440)/64), "Column", bin.index())
 
-      if (step=='post_seeding') and (bin.S()>0):
+      if (step=='post_seeding' or step=='post_clustering') and (bin.S()>0):
         heatmap[bin.sortKey(), bin.index()] += (bin.S())*ev.LSB
         # print("Smeared Energy : ", bin.S(), "R/Z bin", bin.sortKey(), "col", bin.index())
-        if bin.maximaOffset() == cfg['fanoutWidths'][bin.sortKey()]: seed.append([bin.sortKey(), bin.index()])    
+        if bin.maximaOffset() == cfg['fanoutWidths'][bin.sortKey()] and step=='post_seeding': 
+          seed.append([bin.sortKey(), bin.index(), (bin.S())*ev.LSB])    
+          # print(bin.sortKey(), bin.index(), bin.S()*ev.LSB)
 
+    cl = [[cl.sortKey_, cl.sortKey2_, cl.e_.value_*ev.LSB] for cl in clusters]
     if len(seed) == 3 and args.pileup == 'PU0': # and distance(bin, ev) < 10:
         print(f'3 seeds found for event {ev.event}, (pT, \u03B7, \u03C6)=({ev.pT_gen:.0f}, {ev.eta_gen:.2f},{ev.phi_gen:.2f})') 
         create_heatmap(heatmap, step, ev, seed)
     if args.performance: return calculate_shift(heatmap, ev)
-    elif args.col or args.phi: create_heatmap(heatmap, 'columns_'+step if (args.col and step!='post_seeding') else step, ev, seed)
+    elif args.col or args.phi: 
+      if step=='post_unpacking' : create_heatmap(heatmap, 'columns_'+step if args.col else step, ev)
+      if step=='post_seeding'   : create_heatmap(heatmap, step, ev, seed)
+      if step=='post_clustering': create_heatmap(heatmap, step, ev, cl)
     if args.thr_seed: return [len(seed), ev.eta_gen, ev.pT_gen]
+    if args.cl_energy: return [cl, ev] #.eta_gen, ev.phi_gen, ev.pT_gen]
 
 def hgcal_limits(ev):
     plt.axhline(y=(0.476/ev.LSB_r_z-440)/64, color='red', linestyle='--')
@@ -67,7 +69,7 @@ def hgcal_limits(ev):
     plt.axhline(y=(0.076/ev.LSB_r_z-440)/64, color='red', linestyle='--')
     plt.text(3, ((0.076-0.02)/ev.LSB_r_z-440)/64, 'Layer27', color='red', fontsize=6)
 
-def create_heatmap(heatmap, title, gen, seeds=[]):
+def create_heatmap(heatmap, title, gen, markers=[]):
     plt.imshow(heatmap, cmap=white_viridis, origin='lower', aspect='auto')
     x_tick_labels = [int(val) for val in np.linspace(-30, 150, num=7)]
     y_tick_labels = ['{:.2f}'.format(val) for val in np.linspace(440*gen.LSB_r_z, (64**2+440)*gen.LSB_r_z, num=8)]
@@ -78,8 +80,9 @@ def create_heatmap(heatmap, title, gen, seeds=[]):
     plt.ylabel('r/z')
     plt.scatter(23+int(124*gen.phi_gen/np.pi), (np.tan(2*np.arctan(np.exp(-gen.eta_gen)))/gen.LSB_r_z-440)/64, 
                 color='red', marker='x', s=50)
-    for seed in seeds:
-      plt.scatter(seed[1], seed[0], color='white', marker='o', s=20)
+    for marker in markers:
+      plt.scatter(marker[1], marker[0], color='white', marker='o', s=35)
+      plt.text(marker[1], marker[0], str(int(marker[2])), fontsize=6, va='center', ha='center')
     plt.title(f'{title} - Event {gen.event} \n pT:{gen.pT_gen:.0f} GeV, \u03B7:{gen.eta_gen:.2f}, \u03C6:{gen.phi_gen:.2f}'.replace('_', ' '))
     plt.grid(linestyle='--')
     hgcal_limits(gen)
@@ -155,7 +158,7 @@ def plot_seeds(seeds, args):
           seeds_list.append([seed[0] for idx, seed in enumerate(seeds[thr_b]) if idx%n_params == index])
           eta_list.append([eta[1] for idx, eta in enumerate(seeds[thr_b]) if idx%n_params == index])
           p_t_list.append([p_t[2] for idx, p_t in enumerate(seeds[thr_b]) if idx%n_params == index])
-          thr_list.append('a:'+str(thr)+' GeV b:'+str(thr_b))
+          thr_list.append('a:'+str(thr)+' GeV') # b:'+str(thr_b))
       
       plt.hist(seeds_list, bins=4, label=thr_list) 
       produce_efficiency_plots('thr', thr_b, args)
@@ -167,6 +170,36 @@ def plot_seeds(seeds, args):
       for thr in range(len(thr_list)):
           compute_efficiency_plots(seeds_list[thr], eta_list[thr], thr_list[thr], 5)
       produce_efficiency_plots('eta', thr_b, args)
+
+#########################################################
+############# Checking Cluster Energy ###################
+#########################################################
+
+def distance(cl, gen):
+    r_z_bin, phi_bin = bin2coord(cl[0]+0.5, cl[1]+0.5)
+    eta_bin = -np.log(np.tan((r_z_bin*0.7/4096)/2))
+    return np.sqrt((eta_bin-gen.eta_gen)**2+(phi_bin-gen.phi_gen)**2)
+
+def plot_energy(seeds, args):
+    for thr_b in seeds.keys():
+      clusters, eta_list, p_t_list = [], [], []
+      for cluster in seeds[thr_b]:
+        if len(cluster[0]) > 1: 
+          dist = [distance(cl, cluster[1]) for cl in [[cl[0], cl[1]] for cl in cluster[0]]]
+          clusters.append(cluster[0][dist.index(min(dist))][2])
+        else: clusters.append(cluster[0][0][2])
+      eta_list = ([eta[1].eta_gen for idx, eta in enumerate(seeds[thr_b])])
+      p_t_list = ([p_t[1].pT_gen for idx, p_t in enumerate(seeds[thr_b])])
+      
+    plt.scatter(p_t_list, clusters) #, label=thr_list) 
+    plt.title(args.pileup+' '+args.particles)
+    plt.grid(linestyle='--')
+    plt.xlabel(r'$p^{T}_{gen}$')
+    plt.ylabel(r'$p^{T}_{cluster}$')
+    plt.savefig('plots/scatter_pT_vs_cluster'+args.pileup+'_'+args.particles+'.pdf')
+    plt.savefig('plots/scatter_pT_vs_cluster'+args.pileup+'_'+args.particles+'.png')
+    plt.clf()
+
 
 ## not used ##
 def create_plot_py(objects, ev, args):

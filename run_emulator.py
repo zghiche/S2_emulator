@@ -11,6 +11,7 @@ import data_handle.tools as tool
 import data_handle.plot_tools as plot
 from   data_handle.event import provide_events
 import data_handle.geometry as geometry
+import numpy as np
 
 def run_algorithm(config, event, args, shift, seed):
     ''' Calling the emulator algorithm in all its steps '''
@@ -30,20 +31,22 @@ def run_algorithm(config, event, args, shift, seed):
 
     clusters = l1thgcfirmware.HGCalClusterSAPtrCollection()
     clustering_.runClustering(unpackedTCs, histogram, clusters)
+    if args.plot: seed.append(plot.create_plot(histogram, 'post_clustering', event, args, clusters))
     
 
 if __name__ == '__main__':
     ''' python run_emulator.py -n 2 --pileup PU0 --particles photons '''
 
     parser = argparse.ArgumentParser(description='Stage-2 Emulator Parameters')
-    parser.add_argument('-n', type=int, default=1, help='Provide the number of events')
+    parser.add_argument('-n',          type=int, default=1,         help='Provide the number of events')
+    parser.add_argument('--particles', type=str, default='photons', help='Choose the particle sample')
+    parser.add_argument('--pileup',    type=str, default='PU0',     help='Choose the pileup - PU0 or PU200')
     parser.add_argument('--plot',        action='store_true', help='Create plots')
     parser.add_argument('--col',         action='store_true', help='Create plots using column numbers')
     parser.add_argument('--phi',         action='store_true', help='Create plots using phi coordinates')
     parser.add_argument('--performance', action='store_true', help='Create performance plots: distance gen_particle/max_TC')
     parser.add_argument('--thr_seed',    action='store_true', help='Create efficiency plots post seeding')
-    parser.add_argument('--particles', type=str, default='photons', help='Choose the particle sample')
-    parser.add_argument('--pileup',    type=str, default='PU0',     help='Choose the pileup - 0PU or 200PU')
+    parser.add_argument('--cl_energy',   action='store_true', help='Create plot of gen_pt vs recontructed energy')
     args = parser.parse_args()
 
     params = tool.define_map()
@@ -69,3 +72,4 @@ if __name__ == '__main__':
 
     if args.performance: plot.produce_plots(shift_post)
     if args.thr_seed: plot.plot_seeds(seeds, args)
+    if args.cl_energy: plot.plot_energy(seeds, args)
