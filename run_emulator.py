@@ -13,7 +13,7 @@ from   data_handle.event import provide_events
 import data_handle.geometry as geometry
 import numpy as np
 
-def run_algorithm(config, event, args, shift, seed):
+def run_algorithm(config, event, args, result):
     ''' Calling the emulator algorithm in all its steps '''
 
     linkUnpacking_ = l1thgcfirmware.HGCalLinkUnpacking(config)
@@ -22,18 +22,16 @@ def run_algorithm(config, event, args, shift, seed):
 
     unpackedTCs = l1thgcfirmware.HGCalTriggerCellSAPtrCollection()
     linkUnpacking_.runLinkUnpacking(event.data_packer, unpackedTCs);
-    if args.plot: shift.append(plot.create_plot(unpackedTCs, 'post_unpacking', event, args))
+    if args.plot: result.append(plot.create_plot(unpackedTCs, 'unpacking', event, args))
 
     histogram = l1thgcfirmware.HGCalHistogramCellSAPtrCollection()
     seeding_.runSeeding(unpackedTCs, histogram)
-    if args.plot and not args.performance: plot.create_plot(histogram, 'post_seeding', event, args)
-    if args.thr_seed: seed.append(plot.create_plot(histogram, 'post_seeding', event, args))
+    if args.plot: result.append(plot.create_plot(histogram, 'seeding', event, args))
 
     clusters = l1thgcfirmware.HGCalClusterSAPtrCollection()
     clustering_.runClustering(unpackedTCs, histogram, clusters)
-    if args.plot: seed.append(plot.create_plot(histogram, 'post_clustering', event, args, clusters))
+    if args.plot: result.append(plot.create_plot(histogram, 'clustering', event, args, clusters))
     
-
 if __name__ == '__main__':
     ''' python run_emulator.py -n 2 --pileup PU0 --particles photons '''
 
@@ -52,12 +50,9 @@ if __name__ == '__main__':
     params = tool.define_map()
     config = l1thgcfirmware.ClusterAlgoConfig(**params)
 
-    shift_post = []
-    seeds = {thr_b: [] for thr_b in params['thresholdMaximaParam_b']}
- 
+    results = []
     events = provide_events(args.n, args.particles, args.pileup)
-    xml_data = geometry.read_xml()
-    xml_MB = geometry.MB_geometry()
+    xml_data, xml_MB = geometry.read_xml(), geometry.MB_geometry()
     for idx, event in enumerate(events):
       if idx % 50 == 0: print('Processing event', idx)
       if args.n <= 20: print('Processing event {}. (\u03B7, \u03C6) = {:.2f}, {:.2f}. pT = {:.2f} GeV'.format(
@@ -65,11 +60,10 @@ if __name__ == '__main__':
 
       # if (event.pT_gen < 10): continue
       event._data_packer(args, xml_data, xml_MB)
-      for thr_b in params['thresholdMaximaParam_b']:
-        for thr_a in params['thresholdMaximaParam_a']:
-          config.setThresholdMaximaConstants(params['cRows'], int(thr_a/event.LSB), int(thr_b/event.LSB), 0)
-          run_algorithm(config, event, args, shift_post, seeds[thr_b])
+      for thr_a in params['thresholdMaximaParam_a']:
+        config.setThresholdMaximaConstants(params['cRows'], int(thr_a/event.LSB), 0, 0)
+        run_algorithm(config, event, args, results)
 
-    if args.performance: plot.produce_plots(shift_post)
-    if args.thr_seed: plot.plot_seeds(seeds, args)
-    if args.cl_energy: plot.plot_energy(seeds, args)
+    if args.performance: plot.produce_plots(results, args)
+    if args.thr_seed:    plot.plot_seeds(results, args)
+    if args.cl_energy:   plot.plot_cluster_energy(results, args)

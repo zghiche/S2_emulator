@@ -9,7 +9,7 @@ s2emu_config:
   rOverZBinSize: 64
   kernelWidths: []
   areaNormalizations: []
-  thresholdMaximaParam_a: [2., 4., 6., 10] # [8000, 12000, 16000, 20000] # 400000
+  thresholdMaximaParam_a: [2] #, 4., 6., 10] # [8000, 12000, 16000, 20000] # 400000
   thresholdMaximaParam_b: [0] #, 100, 300, 500] # 2000
   thresholdMaximaParam_c: 0 # -80
   # thresholdMaximaConstants: []
