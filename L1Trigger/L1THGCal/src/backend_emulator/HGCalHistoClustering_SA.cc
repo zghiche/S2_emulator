@@ -110,7 +110,7 @@ void HGCalHistoClustering::clusterizer( HGCalTriggerCellSAPtrCollection& trigger
       // tcx->setClock( frame + 289 + 20 );
       // tcx->setLastFrame( false ); //(frame==215);
 
-      unsigned int CurrentdR2Cut(5000); // Magic numbers
+      unsigned int CurrentdR2Cut(8000); // Magic numbers
       double CurrentDist = Dist( tc , col.Current, config_ );
       // std::cout << col.Current << " Column " << iColumn << " Frame " << frame << " CurrentDist " << CurrentDist << std::endl;
       if( CurrentDist < CurrentdR2Cut )
@@ -119,6 +119,7 @@ void HGCalHistoClustering::clusterizer( HGCalTriggerCellSAPtrCollection& trigger
         hc->clock_ = frame + 289 + 20;    
         histogramOut.emplace_back( hc );        
 
+        // if (hc->sortKey_==11) {std::cout << "Index " << tc->index_ << " energy " << tc->energy_ << std::endl;}
         tc->clock_ = frame + 289 + 20; 
         tc->sortKey_ = hc->sortKey_;        
         triggerCellsOut.push_back( move(tc) );
@@ -216,6 +217,7 @@ void HGCalHistoClustering::clusterAccumulator( HGCalClusterSAPtrCollection& clus
   
   std::map< std::pair< int , int > , HGCalClusterSAShrPtr > cluster_map;
 
+  // std::cout << "###################" << std::endl;
   for( auto& x : clusters ){
     auto lKey = std::make_pair( x->sortKey_ , x->index_ );
     auto lIt = cluster_map.find( lKey );
@@ -225,6 +227,7 @@ void HGCalHistoClustering::clusterAccumulator( HGCalClusterSAPtrCollection& clus
       output.push_back( lVal );
       cluster_map[lKey] = lVal;
     } else {
+      // std::cout << "R/Z " << x->sortKey_ << " Index " << x->index_ << " energy " << x->e_.value_ << std::endl;
       *lIt->second += *x;
       lIt->second->L_ = x->L_;
       lIt->second->R_ = x->R_;
@@ -232,6 +235,7 @@ void HGCalHistoClustering::clusterAccumulator( HGCalClusterSAPtrCollection& clus
       lIt->second->sortKey_ = x->sortKey_;
       lIt->second->sortKey2_ = x->sortKey2_;
     }
+    // if (x->sortKey_==11) {std::cout << "Index " << x->index_ << " energy " << x->e_.value_ << std::endl;}
   }
 
   for( auto& x : histogram ){  
@@ -275,6 +279,7 @@ void HGCalHistoClustering::clusterTree( HGCalClusterSAPtrCollection& clusters ) 
       lIt->second->sortKey_ = x->sortKey_;
       lIt->second->sortKey2_ = x->sortKey2_;
     }
+    // if (x->sortKey_==11) {std::cout << "Index " << x->index_ << " energy " << x->e_.value_ << std::endl;}
   }
   // ^^^^^^^^^^^^^^^^^ HACK TO VERIFY VALUES
   
@@ -296,6 +301,7 @@ void HGCalHistoClustering::clusterTree( HGCalClusterSAPtrCollection& clusters ) 
   clusters.clear();
   clusters.reserve(output.size());
   for (auto& sharedPtr : output) {
+      // std::cout << sharedPtr->sortKey_ << " final clusters " << sharedPtr->e_.value_ << std::endl;
       clusters.push_back(std::make_unique<HGCalCluster>(*sharedPtr));
   }
 }

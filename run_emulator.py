@@ -63,7 +63,7 @@ if __name__ == '__main__':
       if args.n <= 20: print('Processing event {}. (\u03B7, \u03C6) = {:.2f}, {:.2f}. pT = {:.2f} GeV'.format(
                               event.event, event.eta_gen, event.phi_gen, event.pT_gen))
 
-      if (event.pT_gen < 10): continue
+      # if (event.pT_gen < 10): continue
       event._data_packer(args, xml_data, xml_MB)
       for thr_b in params['thresholdMaximaParam_b']:
         for thr_a in params['thresholdMaximaParam_a']:

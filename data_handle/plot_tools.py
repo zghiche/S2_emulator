@@ -81,8 +81,13 @@ def create_heatmap(heatmap, title, gen, markers=[]):
     plt.scatter(23+int(124*gen.phi_gen/np.pi), (np.tan(2*np.arctan(np.exp(-gen.eta_gen)))/gen.LSB_r_z-440)/64, 
                 color='red', marker='x', s=50)
     for marker in markers:
-      plt.scatter(marker[1], marker[0], color='white', marker='o', s=35)
-      plt.text(marker[1], marker[0], str(int(marker[2])), fontsize=6, va='center', ha='center')
+      if title=='post_seeding': 
+        plt.scatter(marker[1], marker[0], color='white', marker='o', s=35)
+        plt.text(marker[1], marker[0], str(int(marker[2])), fontsize=6, va='center', ha='center')
+      if title=='post_clustering':
+        print(marker[1], marker[0], marker[2]) 
+        plt.scatter(marker[1], marker[0], color='green', marker='*', s=25, alpha=0.6)
+        plt.text(marker[1], marker[0]+1.2, str(int(marker[2])), fontsize=6, va='center', ha='center')
     plt.title(f'{title} - Event {gen.event} \n pT:{gen.pT_gen:.0f} GeV, \u03B7:{gen.eta_gen:.2f}, \u03C6:{gen.phi_gen:.2f}'.replace('_', ' '))
     plt.grid(linestyle='--')
     hgcal_limits(gen)
@@ -143,11 +148,11 @@ def produce_efficiency_plots(variable, thr_b, args):
     plt.grid()
     plt.xlabel('identified seeds' if variable=='thr' else r'$p_{T}$ [GeV]' if variable=='pT' else r'$\eta$')
     plt.ylabel('Counts' if variable=='thr' else '% of identified seeds')
-    plt.title('Histogram 2D seeds '+variable)
-    thresholds = '_a'+'_'.join(map(str, [int(i*10) for i in cfg['thresholdMaximaParam_a']]))+ \
-                 '_b'+str(thr_b)+'_c'+str(cfg['thresholdMaximaParam_c'])
-    plt.savefig('plots/histogram_seed_vs_'+variable+thresholds+'.pdf')
-    plt.savefig('plots/histogram_seed_vs_'+variable+thresholds+'.png')
+    plt.title('Efficiency 2D seeds '+variable+' '+args.particles+' '+args.pileup)
+    thresholds = '_a'+'_'.join(map(str, [int(i*10) for i in cfg['thresholdMaximaParam_a']])) #+ \
+                 # '_b'+str(thr_b)+'_c'+str(cfg['thresholdMaximaParam_c'])
+    plt.savefig('plots/'+args.particles+'_'+args.pileup+'_efficiency_'+variable+thresholds+'.pdf')
+    plt.savefig('plots/'+args.particles+'_'+args.pileup+'_efficiency_'+variable+thresholds+'.png')
     plt.clf()
 
 def plot_seeds(seeds, args):
@@ -164,7 +169,7 @@ def plot_seeds(seeds, args):
       produce_efficiency_plots('thr', thr_b, args)
 
       for thr in range(len(thr_list)):
-          compute_efficiency_plots(seeds_list[thr], p_t_list[thr], thr_list[thr], 7)
+          compute_efficiency_plots(seeds_list[thr], p_t_list[thr], thr_list[thr], 25)
       produce_efficiency_plots('pT', thr_b, args)
  
       for thr in range(len(thr_list)):
@@ -184,20 +189,19 @@ def plot_energy(seeds, args):
     for thr_b in seeds.keys():
       clusters, eta_list, p_t_list = [], [], []
       for cluster in seeds[thr_b]:
-        if len(cluster[0]) > 1: 
+        if len(cluster[0]) != 0: 
           dist = [distance(cl, cluster[1]) for cl in [[cl[0], cl[1]] for cl in cluster[0]]]
           clusters.append(cluster[0][dist.index(min(dist))][2])
-        else: clusters.append(cluster[0][0][2])
-      eta_list = ([eta[1].eta_gen for idx, eta in enumerate(seeds[thr_b])])
-      p_t_list = ([p_t[1].pT_gen for idx, p_t in enumerate(seeds[thr_b])])
+          eta_list.append(cluster[1].eta_gen)
+          p_t_list.append(cluster[1].pT_gen)
       
     plt.scatter(p_t_list, clusters) #, label=thr_list) 
     plt.title(args.pileup+' '+args.particles)
     plt.grid(linestyle='--')
     plt.xlabel(r'$p^{T}_{gen}$')
     plt.ylabel(r'$p^{T}_{cluster}$')
-    plt.savefig('plots/scatter_pT_vs_cluster'+args.pileup+'_'+args.particles+'.pdf')
-    plt.savefig('plots/scatter_pT_vs_cluster'+args.pileup+'_'+args.particles+'.png')
+    plt.savefig('plots/scatter_pT_vs_cluster_'+args.pileup+'_'+args.particles+'.pdf')
+    plt.savefig('plots/scatter_pT_vs_cluster_'+args.pileup+'_'+args.particles+'.png')
     plt.clf()
 
 

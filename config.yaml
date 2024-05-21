@@ -9,7 +9,7 @@ s2emu_config:
   rOverZBinSize: 64
   kernelWidths: []
   areaNormalizations: []
-  thresholdMaximaParam_a: [1.0] #, 1.5, 2, 3] # [8000, 12000, 16000, 20000] # 400000
+  thresholdMaximaParam_a: [2., 4., 6., 10] # [8000, 12000, 16000, 20000] # 400000
   thresholdMaximaParam_b: [0] #, 100, 300, 500] # 2000
   thresholdMaximaParam_c: 0 # -80
   # thresholdMaximaConstants: []
@@ -47,17 +47,18 @@ s2emu_config:
   saturation: 1048575 # ( (2<<19) - 1 )
 
 particles:
+  base_path: /eos/home-m/mchiusi/s2_emulator/
   PU0:
     photons:
       tree: l1tHGCalTriggerNtuplizer/HGCalTriggerNtuple
-      file: SinglePhoton_Pt-2To200_Fall22_MiniAOD-noPU_24-05-02_emulator_realbcstc_v2-v1/SinglePhoton_Pt-2To200_Fall22_MiniAOD-noPU_24-05-02_emulator_realbcstc_v2-v1.root
+      file: SinglePhoton_Pt-2To200_Fall22_MiniAOD-noPU_24-05-02_emulator_realbcstc_v2-v1.root
     pions:
       tree: l1tHGCalTriggerNtuplizer/HGCalTriggerNtuple
-      file: SinglePion_Pt-0To200_Phase2Fall22DRMiniAOD-noPU_24-05-02_emulator_realbcstc_v2-v1/SinglePion_Pt-0To200_Phase2Fall22DRMiniAOD-noPU_24-05-02_emulator_realbcstc_v2-v1.root
+      file: SinglePion_Pt-0To200_Phase2Fall22DRMiniAOD-noPU_24-05-02_emulator_realbcstc_v2-v1.root
   PU200:
     photons:
       tree: l1tHGCalTriggerNtuplizer/HGCalTriggerNtuple
-      file: DoublePhoton_FlatPt-1To100_PU200_Phase2Fall22DRMiniAOD_24-05-02_emulator_realbcstc_v2-v1/DoublePhoton_FlatPt-1To100_PU200_Phase2Fall22DRMiniAOD_24-05-02_emulator_realbcstc_v2-v1.root
+      file: DoublePhoton_FlatPt-1To100_PU200_Phase2Fall22DRMiniAOD_24-05-02_emulator_realbcstc_v2-v1.root
     pions:
       tree: l1tHGCalTriggerNtuplizer/HGCalTriggerNtuple
-      file: SinglePion_Pt-0To200_Phase2Fall22DRMiniAOD-PU200_24-05-02_emulator_realbcstc_v2-v1/SinglePion_Pt-0To200_Phase2Fall22DRMiniAOD-PU200_24-05-02_emulator_realbcstc_v2-v1.root
+      file: SinglePion_Pt-0To200_Phase2Fall22DRMiniAOD-PU200_24-05-02_emulator_realbcstc_v2-v1.root

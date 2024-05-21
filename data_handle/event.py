@@ -198,7 +198,7 @@ def provide_event(ev, gen):
     return EventData(sorted_si, sorted_sci, gen)
 
 def provide_events(n, particles, PU):
-    base_path = '/eos/home-m/mchiusi/s2_emulator/'
+    base_path = cfg_particles['base_path']
     name_tree = cfg_particles[PU][particles]["tree"]
     filepath  = base_path + cfg_particles[PU][particles]["file"]
 

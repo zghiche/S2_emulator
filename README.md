@@ -17,13 +17,19 @@ Currently I'm studying the back-end mapping (TC to S1, S2 links and frames) to u
 
 ### Installation
 To run the Stage-2 emulator using the Python wrapper, some packages need to be installed in your environment. Here, I'll list the most important ones:
-I suggest creating a `conda` environment for easy inclusion and activation of these packages.
+I suggest creating a `conda` environment for easy inclusion and activation of the following packages.
 ```
-awkward >= 2.2.4
-cppyy   >= 2.1.0
-numpy   >= 1.21.6
-uproot  >= 5.0.13
-yaml    >= 0.2.5
+conda create --name <env_name> python=3.7
+conda install -c conda-forge cppyy 
+
+conda install -c conda-forge pyyaml
+
+pip install matplotlib
+pip install scipy
+pip install awkward
+pip install uproot
+
+conda install gxx
 ```
 
 ### Useful commands
@@ -42,6 +48,8 @@ python run_emulator.py -n 100 --pileup PU0 --particles photons --thr_seed
 ```
 Other options can be displayed using `python run_emulator.py --help`.
 Single particle plots and efficiency plots can be found [here](https://mchiusi.web.cern.ch/Emulator_seeding/).
+
+Some emulator parameters can be easily changes via the config `yaml` file. For instance, the seeding threshold (in GeV) or the seeding window width.
 
 ### Data samples
 I'm producing new data samples using Geometry V16 following the recipe outlined [here](https://twiki.cern.ch/twiki/bin/viewauth/CMS/HGCALTriggerPrimitivesSimulation) and considering [Phase2Fall22campaign](https://cmsweb.cern.ch/das/request?view=list&limit=50&instance=prod%2Fglobal&input=dataset+dataset%3D%2F*%2FPhase2Fall22DRMiniAOD-*125X*%2FGEN-SIM-DIGI-RAW-MINIAOD). Public samples (photons and pions) that I'm using are stored in this eos folder:
